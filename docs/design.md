@@ -1,6 +1,6 @@
 # The Design of APISIX Mesh
 
-This article explains how to implement yet another [Service Mesh](https://www.redhat.com/en/topics/microservices/what-is-a-service-mesh#:~:text=A%20service%20mesh%2C%20like%20the,share%20data%20with%20one%20another.&text=Each%20part%20of%20an%20app,give%20users%20what%20they%20want.) solution by extending [Apache APISIX](http://apisix.apache.org/).
+This article explains how to implement yet another [Service Mesh](https://www.redhat.com/en/topics/microservices/what-is-a-service-mesh#:~:text=A%20service%20mesh%2C%20like%20the,share%20data%20with%20one%20another.&text=Each%20part%20of%20an%20app,give%20users%20what%20they%20want.) solution by extending [Apache APISIX](https://apisix.apache.org/).
 
 ## Status
 
@@ -28,7 +28,7 @@ is deployed distributed.
 
 ## Apache APISIX
 
-Just like the introduction in the website of Apache APISIX:
+Just like the introduction in the [website](https://apisix.apache.org/) of Apache APISIX:
 
 > Apache APISIX is a dynamic, real-time, high-performance Cloud-Native API gateway, based on the Nginx library and etcd.
 >
