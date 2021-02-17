@@ -34,6 +34,7 @@ type fields struct {
 	Time    string
 	Message string
 	Name    string
+	Context string
 	Age     int
 }
 
@@ -64,7 +65,11 @@ func TestLogger(t *testing.T) {
 	for level := range levelMap {
 		t.Run("test log with level "+level, func(t *testing.T) {
 			fws := &fakeWriteSyncer{}
-			logger, err := NewLogger(WithLogLevel(level), WithWriteSyncer(fws))
+			logger, err := NewLogger(
+				WithLogLevel(level),
+				WithWriteSyncer(fws),
+				WithContext("test-logger"),
+			)
 			assert.Nil(t, err, "failed to new logger: ", err)
 			defer logger.Close()
 
@@ -78,6 +83,7 @@ func TestLogger(t *testing.T) {
 			fields := unmarshalLogMessage(t, fws.bytes())
 			assert.Equal(t, fields.Level, level, "bad log level ", fields.Level)
 			assert.Equal(t, fields.Message, "hello", "bad log message ", fields.Message)
+			assert.Equal(t, fields.Context, "test-logger", "bad context")
 
 			handler = rv.MethodByName(http.CanonicalHeaderKey(level) + "f")
 			handler.Call([]reflect.Value{reflect.ValueOf("hello I am %s"), reflect.ValueOf("alex")})
@@ -87,6 +93,7 @@ func TestLogger(t *testing.T) {
 			fields = unmarshalLogMessage(t, fws.bytes())
 			assert.Equal(t, fields.Level, level, "bad log level ", fields.Level)
 			assert.Equal(t, fields.Message, "hello I am alex", "bad log message ", fields.Message)
+			assert.Equal(t, fields.Context, "test-logger", "bad context")
 
 			handler = rv.MethodByName(http.CanonicalHeaderKey(level) + "w")
 			handler.Call([]reflect.Value{reflect.ValueOf("hello"), reflect.ValueOf(zap.String("name", "alex")), reflect.ValueOf(zap.Int("age", 3))})
@@ -98,6 +105,7 @@ func TestLogger(t *testing.T) {
 			assert.Equal(t, fields.Message, "hello", "bad log message ", fields.Message)
 			assert.Equal(t, fields.Name, "alex", "bad name field ", fields.Name)
 			assert.Equal(t, fields.Age, 3, "bad age field ", fields.Age)
+			assert.Equal(t, fields.Context, "test-logger", "bad context")
 		})
 	}
 }

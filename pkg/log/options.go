@@ -56,6 +56,15 @@ func WithOutputFile(file string) Option {
 	}
 }
 
+// WithContext sets the context of the logger.
+func WithContext(ctx string) Option {
+	return &funcOption{
+		do: func(o *options) {
+			o.context = ctx
+		},
+	}
+}
+
 // WithWriteSyncer is a low level API which sets the underlying
 // WriteSyncer by providing a zapcore.WriterSyncer,
 // which has high priority than WithOutputFile.

@@ -38,17 +38,19 @@ var (
 // Logger is a log object, which exposes standard APIs like
 // errorf, error, warn, warnf and etcd.
 type Logger struct {
-	writer io.Writer
-	core   zapcore.Core
-	level  zapcore.Level
+	writer  io.Writer
+	core    zapcore.Core
+	level   zapcore.Level
+	context string
 }
 
 func (logger *Logger) write(level zapcore.Level, message string, fields []zapcore.Field) {
 	e := zapcore.Entry{
-		Level:   level,
-		Time:    time.Now(),
-		Message: message,
-		Caller:  zapcore.NewEntryCaller(runtime.Caller(3)),
+		Level:      level,
+		Time:       time.Now(),
+		Message:    message,
+		LoggerName: logger.context,
+		Caller:     zapcore.NewEntryCaller(runtime.Caller(3)),
 	}
 
 	_ = logger.core.Write(e, fields)
@@ -231,7 +233,8 @@ func NewLogger(opts ...Option) (*Logger, error) {
 	}
 
 	logger := &Logger{
-		level: level,
+		level:   level,
+		context: o.context,
 	}
 
 	if o.writeSyncer != nil {
