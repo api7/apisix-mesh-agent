@@ -3,6 +3,8 @@ module github.com/api7/apisix-mesh-agent
 go 1.14
 
 require (
+	github.com/envoyproxy/protoc-gen-validate v0.4.1
+	github.com/golang/protobuf v1.4.2
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/multierr v1.6.0 // indirect

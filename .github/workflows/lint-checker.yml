@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup Go Environment
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@apisix
         with:
           go-version: '1.14'
       - name: Run gofmt Check
@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: 🚀 Use Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@apisix
         with:
           node-version: '12.x'
       - run: npm install -g markdownlint-cli@0.25.0
