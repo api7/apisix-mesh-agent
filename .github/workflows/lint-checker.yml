@@ -30,7 +30,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Download golangci-lint
-        uses: actions/setup-go@v1
         run: |
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.37.0
           sudo cp ./bin/golangci-lint /usr/bin
