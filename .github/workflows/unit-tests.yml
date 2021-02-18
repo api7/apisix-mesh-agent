@@ -1,0 +1,26 @@
+name: Unit Test Suites
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - chore/project-initialization-1
+jobs:
+  run-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup Go Environment
+      uses: actions/setup-go@v1
+      with:
+        go-version: '1.14'
+    - name: Run Unit Test Suites
+      working-directory: ./
+      run: |
+        make unit-test
+    - name: Upload Coverage Profile
+      working-directory: ./
+      run: |
+        bash <(curl -s https://codecov.io/bash)

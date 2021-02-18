@@ -1,0 +1,51 @@
+name: Lint Checkers
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - chore/project-initialization-1
+jobs:
+  gofmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Go Environment
+        uses: actions/setup-go@v1
+        with:
+          go-version: '1.14'
+      - name: Run gofmt Check
+        working-directory: ./
+        run: |
+          diffs=`gofmt -l .`
+          if [[ -n $diffs ]]; then
+              echo "Files are not formatted by gofmt:"
+              echo $diffs
+              exit 1
+          fi
+  golint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Download golangci-lint
+        uses: actions/setup-go@v1
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.37.0
+          sudo cp ./bin/golangci-lint /usr/bin
+      - name: Run Golang Linters
+        working-directory: ./
+        run: |
+          make lint
+  markdownlint:
+    name: 🍇 Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: 🚀 Use Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12.x'
+      - run: npm install -g markdownlint-cli@0.25.0
+      - run: markdownlint '**/*.md' --ignore node_modules

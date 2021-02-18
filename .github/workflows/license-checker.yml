@@ -1,0 +1,17 @@
+name: License Checker
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - chore/project-initialization-1
+jobs:
+  check-license:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run License Checker
+        run: |
+          make license-check
