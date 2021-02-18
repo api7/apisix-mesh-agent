@@ -13,19 +13,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package sidecar
 
-import (
-	"fmt"
-	"os"
+import "github.com/spf13/cobra"
 
-	"github.com/api7/apisix-mesh-agent/cmd"
-)
-
-func main() {
-	rootCmd := cmd.NewMeshAgentCommand()
-	if err := rootCmd.Execute(); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
+// NewCommand creates the sidecar command for apisix-mesh-agent.
+func NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "",
+		Short: "",
+		Run:   nil,
 	}
+	return cmd
 }

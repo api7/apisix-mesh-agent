@@ -13,19 +13,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package version
 
 import (
 	"fmt"
-	"os"
+	"runtime"
+	"testing"
+	"time"
 
-	"github.com/api7/apisix-mesh-agent/cmd"
+	"gotest.tools/assert"
 )
 
-func main() {
-	rootCmd := cmd.NewMeshAgentCommand()
-	if err := rootCmd.Execute(); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
+func TestVersion(t *testing.T) {
+	_version = "x.y.z"
+	_gitRevision = "9a8bc1dd"
+	_timestamp = "1613616943"
+
+	ver := String()
+	expectedVersion := `Version: x.y.z
+Git SHA: 9a8bc1dd
+Go Version: %s
+OS/Arch: %s/%s
+Build Date: %s
+`
+	date := time.Unix(1613616943, 0)
+	expectedVersion = fmt.Sprintf(expectedVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH, date.String())
+	assert.Equal(t, expectedVersion, ver, "bad version")
 }

@@ -13,19 +13,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cmd
 
 import (
-	"fmt"
-	"os"
+	"github.com/spf13/cobra"
 
-	"github.com/api7/apisix-mesh-agent/cmd"
+	"github.com/api7/apisix-mesh-agent/cmd/sidecar"
+	"github.com/api7/apisix-mesh-agent/cmd/version"
 )
 
-func main() {
-	rootCmd := cmd.NewMeshAgentCommand()
-	if err := rootCmd.Execute(); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
+// NewMeshAgentCommand creates the root command for apisix-mesh-agent.
+func NewMeshAgentCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "apisix-mesh-agent [command] [flags]",
+		Short: "Agent of Apache APISIX to extend it as a Service Mesh Sidecar.",
 	}
+	cmd.AddCommand(
+		sidecar.NewCommand(),
+		version.NewCommand(),
+	)
+	return cmd
 }

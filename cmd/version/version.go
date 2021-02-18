@@ -13,19 +13,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package version
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/api7/apisix-mesh-agent/cmd"
+	"github.com/spf13/cobra"
+
+	"github.com/api7/apisix-mesh-agent/pkg/version"
 )
 
-func main() {
-	rootCmd := cmd.NewMeshAgentCommand()
-	if err := rootCmd.Execute(); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
+// NewCommand creates the version command for apisix-mesh-agent.
+func NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "version",
+		Short: "Version for apisix-mesh-agent",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println(version.String())
+		},
 	}
+	return cmd
 }
