@@ -50,3 +50,11 @@ gofmt:
 ### unit-test:        Run unit test cases
 unit-test:
 	go test -cover -coverprofile=coverage.txt ./...
+
+### license-check:    Do Apache License Header check
+license-check:
+ifeq ("$(wildcard .actions/openwhisk-utilities/scancode/scanCode.py)", "")
+	git clone https://github.com/apache/openwhisk-utilities.git .actions/openwhisk-utilities
+	cp .actions/ASF* .actions/openwhisk-utilities/scancode/
+endif
+	.actions/openwhisk-utilities/scancode/scanCode.py --config .actions/ASF-Release.cfg ./
