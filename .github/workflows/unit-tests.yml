@@ -5,6 +5,9 @@ on:
     branches:
       - master
       - chore/project-initialization-1
+  pull_request:
+    branches:
+      - master
 jobs:
   run-test:
     runs-on: ubuntu-latest
