@@ -3,8 +3,6 @@ on:
   push:
     branches:
       - master
-  pull_request:
-    branches:
       - chore/project-initialization-1
 jobs:
   misspell:
