@@ -1,0 +1,20 @@
+name: Spell Checker
+on:
+  push:
+    branches:
+      - master
+      - chore/project-initialization-1
+jobs:
+  misspell:
+    name: Runner / Misspell
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code.
+        uses: actions/checkout@v1
+      - name: Install Misspell Tool
+        run: |
+          wget -O - -q https://git.io/misspell | sh -s -- -b .
+      - name: Run Misspell Tool
+        run: |
+          find . -name "*.go" -type f | xargs ./misspell -error
+          find docs -type f | xargs ./misspell -error
