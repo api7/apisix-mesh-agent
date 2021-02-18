@@ -82,6 +82,6 @@ Therefore, the apisix-mesh-agent should implement the xDS client side protocol, 
 As the xDS protocol is used, the control plane selection is clear, any products once support xDS protocol can be used as the control plane of
 The APISIX Mesh, like Istio, Kuma. Use existing control plane products reduce the migration overheads since control planes are always incompatible with each other. It's difficult to ask users migrate from one control plane to another. Target of the first stage is the adoption of Apache APISIX as the data plane.
 
-The architecutre is followed. In the future, Custom control plane will be supported, it'll be designed flexible, easy to use/deploy and high available.
+The architecture is followed. In the future, Custom control plane will be supported, it'll be designed flexible, easy to use/deploy and high available.
 
 ![APISIX Mesh Overview](./images/apisix-mesh-overview.png)
