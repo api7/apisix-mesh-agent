@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - chore/project-initialization-1
+  pull_request: null
 jobs:
   run-test:
     runs-on: ubuntu-latest

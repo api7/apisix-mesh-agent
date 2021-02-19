@@ -1,0 +1,95 @@
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+option go_package = "apisix";
+
+import "base.proto";
+import "validate/validate.proto";
+import "google/protobuf/any.proto";
+
+// [#protodoc-title: The Apache APISIX Route configuration]
+// A Route contains multiple parts but basically can be grouped
+// into three:
+// 1). Route match, fields like uris, hosts, remote_addrs are the
+// predicates to indicate whether a request can hit the route.
+// 2). Route action, upstream_id specifies the backend upstream
+// object, which guides Apache APISIX how to route request.
+// 3). Plugins, plugins will run before/after the route action,
+// some plugins are "terminated" so may be request will be returned
+// on the APISIX side (like authentication failures).
+// It's not totally equivalent to the jsonschema definition
+// in Apache APISIX's code base since there are some historical
+// considerations there which are not used here anymore.
+message Route {
+  // URI array used to do the route match.
+  // At least one item should be configured and each of them cannot be
+  // duplicated.
+  repeated string uris = 1 [(validate.rules).repeated = {min_items: 1, unique: true}];
+  // The route name, it's useful for the logging but it's not required.
+  string name = 2 [(validate.rules).string = {min_len: 1, max_len: 100}];
+  // The route id, can be an int64 value or a string matching the specific pattern.
+  ID id = 3;
+  // Textual descriptions used to describe the route use.
+  string desc = 4 [(validate.rules).string.max_len = 256];
+  // Priority of this route, used to decide which route should be used when
+  // multiple routes contains same URI.
+  // Larger value means higher priority. The default value is 0.
+  int32 priority = 5;
+  // HTTP Methods used to do the route match.
+  repeated string methods = 6 [
+    (validate.rules).repeated.unique = true,
+    (validate.rules).repeated.items.string = {in: [
+      "GET", "POST", "PUT", "DELETE", "PATCH",
+      "HEAD", "OPTIONS", "CONNECT", "TRACE"
+    ]}
+  ];
+  // Host array used to do the route match.
+  repeated string hosts = 7 [
+    (validate.rules).repeated = {
+      unique: true,
+      ignore_empty: true,
+      min_items: 1,
+    },
+    (validate.rules).repeated.items.string.pattern = "^\\*?[0-9a-zA-Z-._]+$"
+  ];
+  // Remote address array used to do the route match.
+  repeated string remote_addrs = 8 [(validate.rules).repeated = {
+    unique: true,
+    ignore_empty: true,
+    min_items: 1
+    // TODO: IPv4 or IPv6 format pattern.
+  }];
+  // Nginx vars used to do the route match.
+  repeated string vars = 9 [(validate.rules).repeated = {
+    min_items: 2,
+    max_items: 4
+  }];
+  // Embedded plugins.
+  google.protobuf.Any plugins = 10;
+  // The referred service id.
+  ID service_id = 11;
+  // The referred upstream id.
+  ID upstream_id = 12;
+
+  // RouteStatus Enumerations.
+  enum RouteStatus {
+    Disable = 0;
+    Enable = 1;
+  };
+  // The route status.
+  RouteStatus status = 13;
+}

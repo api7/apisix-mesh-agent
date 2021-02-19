@@ -1,0 +1,81 @@
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+option go_package = "apisix";
+
+import "base.proto";
+import "validate/validate.proto";
+
+// [#protodoc-title: The Apache APISIX Upstream Health Check configuration]
+message HealthCheck {
+
+}
+
+// [#protodoc-title: The Apache APISIX Upstream configuration]
+message Upstream {
+  // How many times a request can be retried while communicating to the upstream,
+  // note request can be retried only if no bytes are sent to client.
+  int32 retries = 1 [(validate.rules).int32.gte = 0];
+  // Timeout settings about connecting, reading and sending with upstream.
+  message Timeout {
+    // The connect timeout setting (in seconds).
+    double connect = 1 [(validate.rules).double.gt = 0];
+    // The send timeout setting (in seconds).
+    double send = 2 [(validate.rules).double.gt = 0];
+    // The read timeout setting (in seconds).
+    double read = 3 [(validate.rules).double.gt = 0];
+  }
+  // Timeout settings for this upstream.
+  Timeout timeout = 2;
+  // The load balancing algorithm.
+  string type = 3 [(validate.rules).string = {
+    in: [
+    "chash", "roundrobin", "ewma", "lease_conn"
+  ]}];
+  // The scope of hash key, this field is only in effective
+  // if type is "chash".
+  string hash_on = 4 [(validate.rules).string = {
+    in: [
+      "vars", "header", "cookie", "consumer", "vars_combination"
+    ]
+  }];
+  // The hash key, this field is only in effective
+  // if type is "chash".
+  string key = 5;
+  // The health check settings for this upstream.
+  HealthCheck check = 6;
+  // The communication protocol to use.
+  string scheme = 7 [(validate.rules).string = {
+    in: [
+      "grpc", "grpcs", "http", "https"
+    ]
+  }];
+  // The host passing strategy.
+  string pass_host = 8 [(validate.rules).string = {
+    in: [
+      "pass", "node", "rewrite"
+    ]
+  }];
+  // The HTTP Host header to use when sending requests to this upstream.
+  string upstream_host = 9 [(validate.rules).string.pattern = "^\\*?[0-9a-zA-Z-._]+$"];
+  // The upstream name, it's useful for the logging but it's not required.
+  string name = 10 [(validate.rules).string = {min_len: 1, max_len: 100}];
+  // Textual descriptions used to describe the upstream use.
+  string desc = 11 [(validate.rules).string.max_len = 256];
+  // The upstream id.
+  ID upstream_id = 12;
+}

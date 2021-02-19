@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - master
-      - chore/project-initialization-1
+  pull_request: null
 jobs:
   misspell:
     name: Runner / Misspell
