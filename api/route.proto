@@ -17,18 +17,23 @@ syntax = "proto3";
 
 option go_package = "apisix";
 
+import "base.proto";
 import "validate/validate.proto";
 import "google/protobuf/any.proto";
 
-// ID used to identify resources like Route, Upstream.
-message ID {
-  oneof oneof_id {
-    int64 int_val = 1 [(validate.rules).int64.gte = 1];
-    string str_val = 2 [(validate.rules).string = {min_len: 1, max_len: 64, pattern: "^[a-zA-Z0-9-_.]+$"}];
-  };
-}
-
 // [#protodoc-title: The Apache APISIX Route configuration]
+// A Route contains multiple parts but basically can be grouped
+// into three:
+// 1). Route match, fields like uris, hosts, remote_addrs are the
+// predicates to indicate whether a request can hit the route.
+// 2). Route action, upstream_id specifies the backend upstream
+// object, which guides Apache APISIX how to route request.
+// 3). Plugins, plugins will run before/after the route action,
+// some plugins are "terminated" so may be request will be returned
+// on the APISIX side (like authentication failures).
+// It's not totally equivalent to the jsonschema definition
+// in Apache APISIX's code base since there are some historical
+// considerations there which are not used here anymore.
 message Route {
   // URI array used to do the route match.
   // At least one item should be configured and each of them cannot be
