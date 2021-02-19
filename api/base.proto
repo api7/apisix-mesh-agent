@@ -11,3 +11,9 @@ message ID {
     string str_val = 2 [(validate.rules).string = {min_len: 1, max_len: 64, pattern: "^[a-zA-Z0-9-_.]+$"}];
   };
 }
+
+// Var represents the expression like:
+// ["arg_id", "equal", "543"].
+message Var {
+  repeated string vars = 1 [(validate.rules).repeated = {min_items: 2, max_items: 4}];
+}

@@ -170,11 +170,19 @@ func (m *Route) Validate() error {
 		// no validation rules for RemoteAddrs[idx]
 	}
 
-	if l := len(m.GetVars()); l < 2 || l > 4 {
-		return RouteValidationError{
-			field:  "Vars",
-			reason: "value must contain between 2 and 4 items, inclusive",
+	for idx, item := range m.GetVars() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return RouteValidationError{
+					field:  fmt.Sprintf("Vars[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
 		}
+
 	}
 
 	if v, ok := interface{}(m.GetPlugins()).(interface{ Validate() error }); ok {
