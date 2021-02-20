@@ -1,7 +1,7 @@
 package apisix
 
 import (
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )

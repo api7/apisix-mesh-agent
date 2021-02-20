@@ -1,0 +1,30 @@
+{
+  "versionInfo": "0",
+  "resources": [
+    {
+      "@type": "type.googleapis.com/envoy.config.route.v3.RouteConfiguration",
+      "name": "rc1",
+      "virtualHosts": [
+        {
+          "name": "vhost1",
+          "domains": [
+            "*.apache.org",
+            "apisix.apache.org"
+          ],
+          "routes": [
+            {
+              "name": "route1",
+              "match": {
+                "path": "/foo",
+                "caseSensitive": true
+              },
+              "route": {
+                "cluster": "kubernetes.default.svc.cluster.local"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -7,9 +7,9 @@ import (
 	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 )
 
-// XDSAdaptor translates xDS resources like Route, Cluster
+// Adaptor translates xDS resources like Route, Cluster
 // to the equivalent configs in Apache APISIX.
-type XDSAdaptor interface {
+type Adaptor interface {
 	// TranslateRouteConfiguration translate a RouteConfiguration to a series APISIX
 	// Routes.
 	// WARNING: not all fields are translated, only the necessary parts are used, others
@@ -17,12 +17,12 @@ type XDSAdaptor interface {
 	TranslateRouteConfiguration(*routev3.RouteConfiguration) ([]*apisix.Route, error)
 }
 
-type xdsAdaptor struct {
+type adaptor struct {
 	logger *log.Logger
 }
 
-// NewXDSAdaptor creates a XDS based adaptor.
-func NewXDSAdaptor(cfg *config.Config) (XDSAdaptor, error) {
+// NewAdaptor creates a XDS based adaptor.
+func NewAdaptor(cfg *config.Config) (Adaptor, error) {
 	logger, err := log.NewLogger(
 		log.WithOutputFile(cfg.LogOutput),
 		log.WithLogLevel(cfg.LogLevel),
@@ -31,7 +31,7 @@ func NewXDSAdaptor(cfg *config.Config) (XDSAdaptor, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &xdsAdaptor{
+	return &adaptor{
 		logger: logger,
 	}, nil
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
 
-func (adaptor *xdsAdaptor) TranslateRouteConfiguration(r *routev3.RouteConfiguration) ([]*apisix.Route, error) {
+func (adaptor *adaptor) TranslateRouteConfiguration(r *routev3.RouteConfiguration) ([]*apisix.Route, error) {
 	var routes []*apisix.Route
 	for _, vhost := range r.GetVirtualHosts() {
 		partial, err := adaptor.translateVirtualHost(r.Name, vhost)
@@ -28,7 +28,7 @@ func (adaptor *xdsAdaptor) TranslateRouteConfiguration(r *routev3.RouteConfigura
 	return routes, nil
 }
 
-func (adaptor *xdsAdaptor) translateVirtualHost(prefix string, vhost *routev3.VirtualHost) ([]*apisix.Route, error) {
+func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.VirtualHost) ([]*apisix.Route, error) {
 	if prefix == "" {
 		prefix = "<anon>"
 	}
@@ -36,7 +36,7 @@ func (adaptor *xdsAdaptor) translateVirtualHost(prefix string, vhost *routev3.Vi
 
 	// FIXME Respect the CaseSensitive field.
 	for _, route := range vhost.GetRoutes() {
-		if route.GetMatch().CaseSensitive.GetValue() == false {
+		if !route.GetMatch().CaseSensitive.GetValue() {
 			// Apache APISIX doens't support case insensitive URI match,
 			// so these routes should be neglected.
 			adaptor.logger.Warnw("ignore route with case insensitive match",
@@ -68,7 +68,7 @@ func (adaptor *xdsAdaptor) translateVirtualHost(prefix string, vhost *routev3.Vi
 			continue
 		}
 		vars = append(vars, queryVars...)
-		name = fmt.Sprintf("%s#%s#%s", prefix, vhost.GetName(), name)
+		name = fmt.Sprintf("%s.%s.%s", name, vhost.GetName(), prefix)
 		r := &apisix.Route{
 			Name:   name,
 			Status: 1,
@@ -91,7 +91,7 @@ func (adaptor *xdsAdaptor) translateVirtualHost(prefix string, vhost *routev3.Vi
 	return routes, nil
 }
 
-func (adaptor *xdsAdaptor) getClusterName(route *routev3.Route) (string, bool) {
+func (adaptor *adaptor) getClusterName(route *routev3.Route) (string, bool) {
 	action, ok := route.GetAction().(*routev3.Route_Route)
 	if !ok {
 		adaptor.logger.Warnw("ignore route with unexpected action",
@@ -109,7 +109,7 @@ func (adaptor *xdsAdaptor) getClusterName(route *routev3.Route) (string, bool) {
 	return cluster.Cluster, false
 }
 
-func (adaptor *xdsAdaptor) getURL(route *routev3.Route) (string, bool) {
+func (adaptor *adaptor) getURL(route *routev3.Route) (string, bool) {
 	var uri string
 	switch route.GetMatch().GetPathSpecifier().(type) {
 	case *routev3.RouteMatch_Path:
@@ -125,7 +125,7 @@ func (adaptor *xdsAdaptor) getURL(route *routev3.Route) (string, bool) {
 	return uri, false
 }
 
-func (adaptor *xdsAdaptor) getParametersMatchVars(route *routev3.Route) ([]*apisix.Var, bool) {
+func (adaptor *adaptor) getParametersMatchVars(route *routev3.Route) ([]*apisix.Var, bool) {
 	// See https://github.com/api7/lua-resty-expr
 	// for the translation details.
 	var vars []*apisix.Var
@@ -149,7 +149,7 @@ func (adaptor *xdsAdaptor) getParametersMatchVars(route *routev3.Route) ([]*apis
 	return vars, false
 }
 
-func (adaptor *xdsAdaptor) getHeadersMatchVars(route *routev3.Route) ([]*apisix.Var, bool) {
+func (adaptor *adaptor) getHeadersMatchVars(route *routev3.Route) ([]*apisix.Var, bool) {
 	// See https://github.com/api7/lua-resty-expr
 	// for the translation details.
 	var vars []*apisix.Var
@@ -201,18 +201,18 @@ func (adaptor *xdsAdaptor) getHeadersMatchVars(route *routev3.Route) ([]*apisix.
 
 func getStringMatchValue(matcher *matcherv3.StringMatcher) string {
 	pattern := matcher.MatchPattern
-	switch pattern.(type) {
+	switch pat := pattern.(type) {
 	case *matcherv3.StringMatcher_Exact:
-		return "^" + pattern.(*matcherv3.StringMatcher_Exact).Exact + "$"
+		return "^" + pat.Exact + "$"
 	case *matcherv3.StringMatcher_Contains:
-		return pattern.(*matcherv3.StringMatcher_Contains).Contains
+		return pat.Contains
 	case *matcherv3.StringMatcher_Prefix:
-		return "^" + pattern.(*matcherv3.StringMatcher_Prefix).Prefix
+		return "^" + pat.Prefix
 	case *matcherv3.StringMatcher_Suffix:
-		return pattern.(*matcherv3.StringMatcher_Suffix).Suffix + "$"
+		return pat.Suffix + "$"
 	case *matcherv3.StringMatcher_SafeRegex:
 		// TODO Regex Engine detection.
-		return pattern.(*matcherv3.StringMatcher_SafeRegex).SafeRegex.Regex
+		return pat.SafeRegex.Regex
 	default:
 		panic("unknown StringMatcher type")
 	}

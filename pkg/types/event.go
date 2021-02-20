@@ -15,6 +15,24 @@
 
 package types
 
+// EventType is the kind of event.
+type EventType string
+
+var (
+	// EventAdd represents the add event.
+	EventAdd = EventType("add")
+	// EventUpdate represents the update event.
+	EventUpdate = EventType("update")
+	// EventDelete represents the delete event.
+	EventDelete = EventType("delete")
+)
+
 // Event describes a specific event generated from the provisioner.
 type Event struct {
+	Type   EventType
+	Object interface{}
+	// Tombstone is only valid for delete event,
+	// in such a case it stands for the final state
+	// of the object.
+	Tombstone interface{}
 }

@@ -57,7 +57,7 @@ func TestGetStringMatchValue(t *testing.T) {
 }
 
 func TestGetHeadersMatchVars(t *testing.T) {
-	a := &xdsAdaptor{logger: log.DefaultLogger}
+	a := &adaptor{logger: log.DefaultLogger}
 
 	route := &routev3.Route{
 		Match: &routev3.RouteMatch{
@@ -119,7 +119,7 @@ func TestGetHeadersMatchVars(t *testing.T) {
 }
 
 func TestGetParametersMatchVars(t *testing.T) {
-	a := &xdsAdaptor{logger: log.DefaultLogger}
+	a := &adaptor{logger: log.DefaultLogger}
 
 	route := &routev3.Route{
 		Match: &routev3.RouteMatch{
@@ -170,7 +170,7 @@ func TestGetParametersMatchVars(t *testing.T) {
 }
 
 func TestGetURL(t *testing.T) {
-	a := &xdsAdaptor{logger: log.DefaultLogger}
+	a := &adaptor{logger: log.DefaultLogger}
 	route := &routev3.Route{
 		Match: &routev3.RouteMatch{
 			PathSpecifier: &routev3.RouteMatch_Prefix{
@@ -207,7 +207,7 @@ func TestGetURL(t *testing.T) {
 }
 
 func TestGetClusterName(t *testing.T) {
-	a := &xdsAdaptor{logger: log.DefaultLogger}
+	a := &adaptor{logger: log.DefaultLogger}
 	route := &routev3.Route{
 		Action: &routev3.Route_Route{
 			Route: &routev3.RouteAction{
@@ -239,7 +239,7 @@ func TestGetClusterName(t *testing.T) {
 }
 
 func TestTranslateVirtualHost(t *testing.T) {
-	a := &xdsAdaptor{logger: log.DefaultLogger}
+	a := &adaptor{logger: log.DefaultLogger}
 	vhost := &routev3.VirtualHost{
 		Name: "test",
 		Domains: []string{
@@ -307,7 +307,7 @@ func TestTranslateVirtualHost(t *testing.T) {
 	routes, err := a.translateVirtualHost("test", vhost)
 	assert.Nil(t, err)
 	assert.Len(t, routes, 1)
-	assert.Equal(t, routes[0].Name, "test#test#route1")
+	assert.Equal(t, routes[0].Name, "route1.test.test")
 	assert.Equal(t, routes[0].Status, apisix.Route_Enable)
 	assert.Equal(t, routes[0].Id, &apisix.ID{
 		OneofId: &apisix.ID_StrVal{

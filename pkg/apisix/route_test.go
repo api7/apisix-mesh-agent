@@ -71,12 +71,6 @@ func TestCompareRoutes(t *testing.T) {
 			},
 		},
 	})
-	assert.Equal(t, updated, []*apisix.Route{
-		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "3"},
-			},
-			Uris: []string{"/foo*"},
-		},
-	})
+	assert.Equal(t, updated[0].Id.GetStrVal(), "3")
+	assert.Equal(t, updated[0].Uris, []string{"/foo*"})
 }
