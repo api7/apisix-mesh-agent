@@ -2,6 +2,7 @@ package v3
 
 import (
 	"fmt"
+	"strings"
 
 	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	matcherv3 "github.com/envoyproxy/go-control-plane/envoy/type/matcher/v3"
@@ -23,6 +24,7 @@ func (adaptor *xdsAdaptor) TranslateRouteConfiguration(r *routev3.RouteConfigura
 		}
 		routes = append(routes, partial...)
 	}
+	// TODO support Vhds.
 	return routes, nil
 }
 
@@ -32,19 +34,21 @@ func (adaptor *xdsAdaptor) translateVirtualHost(prefix string, vhost *routev3.Vi
 	}
 	var routes []*apisix.Route
 
+	// FIXME Respect the CaseSensitive field.
 	for _, route := range vhost.GetRoutes() {
-		cluster, skip := adaptor.getClusterName(route)
-		if skip {
-			continue
-		}
-
-		if route.GetMatch().GetCaseSensitive().GetValue() == false {
-			adaptor.logger.Warnw("ignore route with unexpected cluster specifier",
+		if route.GetMatch().CaseSensitive.GetValue() == false {
+			// Apache APISIX doens't support case insensitive URI match,
+			// so these routes should be neglected.
+			adaptor.logger.Warnw("ignore route with case insensitive match",
 				zap.Any("route", route),
 			)
 			continue
 		}
 
+		cluster, skip := adaptor.getClusterName(route)
+		if skip {
+			continue
+		}
 		uri, skip := adaptor.getURL(route)
 		if skip {
 			continue
@@ -64,14 +68,13 @@ func (adaptor *xdsAdaptor) translateVirtualHost(prefix string, vhost *routev3.Vi
 			continue
 		}
 		vars = append(vars, queryVars...)
-
 		name = fmt.Sprintf("%s#%s#%s", prefix, vhost.GetName(), name)
 		r := &apisix.Route{
 			Name:   name,
 			Status: 1,
 			Id: &apisix.ID{
 				OneofId: &apisix.ID_StrVal{
-					StrVal: id.GenID(route.Name),
+					StrVal: id.GenID(name),
 				},
 			},
 			Hosts: vhost.Domains,
@@ -131,7 +134,7 @@ func (adaptor *xdsAdaptor) getParametersMatchVars(route *routev3.Route) ([]*apis
 		name := "arg_" + param.GetName()
 		switch param.GetQueryParameterMatchSpecifier().(type) {
 		case *routev3.QueryParameterMatcher_PresentMatch:
-			expr.Vars = []string{name, "!=", ""}
+			expr.Vars = []string{name, "!", "~~", "^$"}
 		case *routev3.QueryParameterMatcher_StringMatch:
 			matcher := param.GetQueryParameterMatchSpecifier().(*routev3.QueryParameterMatcher_StringMatch)
 			value := getStringMatchValue(matcher.StringMatch)
@@ -155,34 +158,28 @@ func (adaptor *xdsAdaptor) getHeadersMatchVars(route *routev3.Route) ([]*apisix.
 			expr  apisix.Var
 			name  string
 			value string
-			op    string
 		)
 		switch header.GetName() {
 		case ":method":
-			name = "$request_method"
+			name = "request_method"
 		case ":authority":
-			name = "$http_host"
+			name = "http_host"
 		default:
-			name = "http_" + header.Name
+			name = strings.ToLower(header.Name)
+			name = "http_" + strings.ReplaceAll(name, "-", "_")
 		}
 
 		switch header.HeaderMatchSpecifier.(type) {
 		case *routev3.HeaderMatcher_ContainsMatch:
-			op = "~~"
 			value = header.HeaderMatchSpecifier.(*routev3.HeaderMatcher_ContainsMatch).ContainsMatch
 		case *routev3.HeaderMatcher_ExactMatch:
-			op = "=="
-			value = header.HeaderMatchSpecifier.(*routev3.HeaderMatcher_ExactMatch).ExactMatch
+			value = "^" + header.HeaderMatchSpecifier.(*routev3.HeaderMatcher_ExactMatch).ExactMatch + "$"
 		case *routev3.HeaderMatcher_PrefixMatch:
-			op = "~~"
 			value = "^" + header.HeaderMatchSpecifier.(*routev3.HeaderMatcher_PrefixMatch).PrefixMatch
 		case *routev3.HeaderMatcher_PresentMatch:
-			op = "~="
 		case *routev3.HeaderMatcher_SafeRegexMatch:
-			op = "~~"
 			value = header.HeaderMatchSpecifier.(*routev3.HeaderMatcher_SafeRegexMatch).SafeRegexMatch.Regex
 		case *routev3.HeaderMatcher_SuffixMatch:
-			op = "~~"
 			value = header.HeaderMatchSpecifier.(*routev3.HeaderMatcher_SuffixMatch).SuffixMatch + "$"
 		default:
 			// TODO Some other HeaderMatchers can be implemented else.
@@ -193,9 +190,9 @@ func (adaptor *xdsAdaptor) getHeadersMatchVars(route *routev3.Route) ([]*apisix.
 		}
 
 		if header.InvertMatch {
-			expr.Vars = []string{name, "!", op, value}
+			expr.Vars = []string{name, "!", "~~", value}
 		} else {
-			expr.Vars = []string{name, op, value}
+			expr.Vars = []string{name, "~~", value}
 		}
 		vars = append(vars, &expr)
 	}
@@ -210,10 +207,11 @@ func getStringMatchValue(matcher *matcherv3.StringMatcher) string {
 	case *matcherv3.StringMatcher_Contains:
 		return pattern.(*matcherv3.StringMatcher_Contains).Contains
 	case *matcherv3.StringMatcher_Prefix:
-		return "^" + pattern.(*matcherv3.StringMatcher_Exact).Exact
+		return "^" + pattern.(*matcherv3.StringMatcher_Prefix).Prefix
 	case *matcherv3.StringMatcher_Suffix:
-		return pattern.(*matcherv3.StringMatcher_Exact).Exact + "$"
+		return pattern.(*matcherv3.StringMatcher_Suffix).Suffix + "$"
 	case *matcherv3.StringMatcher_SafeRegex:
+		// TODO Regex Engine detection.
 		return pattern.(*matcherv3.StringMatcher_SafeRegex).SafeRegex.Regex
 	default:
 		panic("unknown StringMatcher type")

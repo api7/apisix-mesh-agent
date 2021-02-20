@@ -12,8 +12,8 @@ import (
 type XDSAdaptor interface {
 	// TranslateRouteConfiguration translate a RouteConfiguration to a series APISIX
 	// Routes.
-	// TODO The RouteConfiguration is not totally translated, should add new features
-	// gradually.
+	// WARNING: not all fields are translated, only the necessary parts are used, others
+	// can be added in the future.
 	TranslateRouteConfiguration(*routev3.RouteConfiguration) ([]*apisix.Route, error)
 }
 
