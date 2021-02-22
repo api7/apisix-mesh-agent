@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "apisix";
+option go_package = ".;apisix";
 
 import "base.proto";
 import "validate/validate.proto";
@@ -59,10 +59,7 @@ message Route {
     // TODO: IPv4 or IPv6 format pattern.
   }];
   // Nginx vars used to do the route match.
-  repeated string vars = 9 [(validate.rules).repeated = {
-    min_items: 2,
-    max_items: 4
-  }];
+  repeated Var vars = 9;
   // Embedded plugins.
   google.protobuf.Any plugins = 10;
   // The referred service id.

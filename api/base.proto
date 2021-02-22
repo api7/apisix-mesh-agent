@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "apisix";
+option go_package = ".;apisix";
 
 import "validate/validate.proto";
 
@@ -10,4 +10,10 @@ message ID {
     int64 int_val = 1 [(validate.rules).int64.gte = 1];
     string str_val = 2 [(validate.rules).string = {min_len: 1, max_len: 64, pattern: "^[a-zA-Z0-9-_.]+$"}];
   };
+}
+
+// Var represents the expression like:
+// ["arg_id", "equal", "543"].
+message Var {
+  repeated string vars = 1 [(validate.rules).repeated = {min_items: 2, max_items: 4}];
 }
