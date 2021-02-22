@@ -29,6 +29,10 @@ func (adaptor *adaptor) TranslateCluster(c *clusterv3.Cluster) (*apisix.Upstream
 		return nil, err
 	}
 
+	adaptor.logger.Debugw("got upstream after parsing cluster",
+		zap.Any("cluster", c),
+	)
+
 	return ups, nil
 }
 
@@ -69,7 +73,7 @@ func (adaptor *adaptor) translateClusterLoadAssignments(c *clusterv3.Cluster, up
 	}
 	switch c.GetType() {
 	case clusterv3.Cluster_EDS:
-		return ErrRequiredFurtherEDS
+		return ErrRequireFurtherEDS
 	default:
 		nodes, err := adaptor.TranslateClusterLoadAssignment(c.GetLoadAssignment())
 		if err != nil {
@@ -128,6 +132,10 @@ func (adaptor *adaptor) TranslateClusterLoadAssignment(la *endpointv3.ClusterLoa
 				)
 				continue
 			}
+			adaptor.logger.Debugw("got node after parsing endpoint",
+				zap.Any("node", node),
+				zap.Any("endpoint", ep),
+			)
 			// Currently Apache APISIX doesn't use the metadata field.
 			// So we don't pass ep.Metadata.
 			nodes = append(nodes, node)

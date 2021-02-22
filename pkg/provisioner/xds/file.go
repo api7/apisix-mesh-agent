@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	discoveryv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/fsnotify/fsnotify"
@@ -24,7 +25,8 @@ import (
 )
 
 type resourceManifest struct {
-	routes []*apisix.Route
+	routes    []*apisix.Route
+	upstreams []*apisix.Upstream
 }
 
 // diffFrom checks the difference between rm and rm2 from rm's point of view.
@@ -225,6 +227,8 @@ func (p *xdsFileProvisioner) generateEventsFromDiscoveryResponseV3(filename stri
 		switch res.GetTypeUrl() {
 		case "type.googleapis.com/envoy.config.route.v3.RouteConfiguration":
 			rm.routes = append(rm.routes, p.processRouteConfigurationV3(res)...)
+		case "type.googleapis.com/envoy.config.cluster.v3.Cluster":
+			rm.upstreams = append(rm.upstreams, p.processClusterV3(res)...)
 		default:
 			p.logger.Warnw("ignore unnecessary resource",
 				zap.String("type", res.GetTypeUrl()),
@@ -319,4 +323,32 @@ func (p *xdsFileProvisioner) processRouteConfigurationV3(res *any.Any) []*apisix
 		)
 	}
 	return routes
+}
+
+func (p *xdsFileProvisioner) processClusterV3(res *any.Any) []*apisix.Upstream {
+	var cluster clusterv3.Cluster
+	err := anypb.UnmarshalTo(res, &cluster, proto.UnmarshalOptions{
+		DiscardUnknown: true,
+	})
+	if err != nil {
+		p.logger.Errorw("found invalid Cluster resource",
+			zap.Error(err),
+			zap.Any("resource", res),
+		)
+		return nil
+	}
+	ups, err := p.v3Adaptor.TranslateCluster(&cluster)
+	if err != nil && err != xdsv3.ErrRequireFurtherEDS {
+		p.logger.Errorw("failed to translate Cluster to APISIX routes",
+			zap.Error(err),
+			zap.Any("cluster", &cluster),
+		)
+		return nil
+	}
+	if err == xdsv3.ErrRequireFurtherEDS {
+		p.logger.Warnw("cluster depends on another EDS config, an upstream withou nodes setting was generated",
+			zap.Any("upstream", ups),
+		)
+	}
+	return []*apisix.Upstream{ups}
 }

@@ -13,11 +13,11 @@ import (
 )
 
 var (
-	// ErrRequiredFurtherEDS means the translation of Cluster is not complete
+	// ErrRequireFurtherEDS means the translation of Cluster is not complete
 	// since it depends on EDS to fetch the load assignment (endpoints).
 	// Once this error was given, the Cluster should keep invisible until
 	// the EDS config arrived.
-	ErrRequiredFurtherEDS = errors.New("required further EDS config")
+	ErrRequireFurtherEDS = errors.New("required further EDS config")
 	// ErrFeatureNotSupportedYet means a non-supported feature exists in the
 	// xDS resource so the Adaptor goes ahead.
 	ErrFeatureNotSupportedYet = errors.New("feature not supported yet")
