@@ -184,12 +184,51 @@ func TestFileProvisionerGenerateEventsFromDiscoveryResponse(t *testing.T) {
 			},
 		},
 	}
-	var opaque any.Any
+	c := &clusterv3.Cluster{
+		Name:     "httpbin.default.svc.cluster.local",
+		LbPolicy: clusterv3.Cluster_ROUND_ROBIN,
+		LoadAssignment: &endpointv3.ClusterLoadAssignment{
+			ClusterName: "httpbin.default.svc.cluster.local",
+			Endpoints: []*endpointv3.LocalityLbEndpoints{
+				{
+					LbEndpoints: []*endpointv3.LbEndpoint{
+						{
+							HostIdentifier: &endpointv3.LbEndpoint_Endpoint{
+								Endpoint: &endpointv3.Endpoint{
+									Address: &corev3.Address{
+										Address: &corev3.Address_SocketAddress{
+											SocketAddress: &corev3.SocketAddress{
+												Protocol: corev3.SocketAddress_TCP,
+												Address:  "10.0.3.11",
+												PortSpecifier: &corev3.SocketAddress_PortValue{
+													PortValue: 8000,
+												},
+											},
+										},
+									},
+								},
+							},
+							LoadBalancingWeight: &wrappers.UInt32Value{
+								Value: 100,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	var (
+		opaque  any.Any
+		opaque2 any.Any
+	)
 	opaque.TypeUrl = "type.googleapis.com/" + string(rc.ProtoReflect().Descriptor().FullName())
 	assert.Nil(t, anypb.MarshalFrom(&opaque, rc, proto2.MarshalOptions{}))
+	opaque2.TypeUrl = "type.googleapis.com/" + string(c.ProtoReflect().Descriptor().FullName())
+	assert.Nil(t, anypb.MarshalFrom(&opaque2, c, proto2.MarshalOptions{}))
+
 	dr := &discoveryv3.DiscoveryResponse{
 		VersionInfo: "0",
-		Resources:   []*any.Any{&opaque},
+		Resources:   []*any.Any{&opaque, &opaque2},
 	}
 
 	cfg := &config.Config{
