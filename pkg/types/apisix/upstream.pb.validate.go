@@ -36,71 +36,6 @@ var (
 // define the regex for a UUID once up-front
 var _upstream_uuidPattern = regexp.MustCompile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
-// Validate checks the field values on HealthCheck with the rules defined in
-// the proto definition for this message. If any rules are violated, an error
-// is returned.
-func (m *HealthCheck) Validate() error {
-	if m == nil {
-		return nil
-	}
-
-	return nil
-}
-
-// HealthCheckValidationError is the validation error returned by
-// HealthCheck.Validate if the designated constraints aren't met.
-type HealthCheckValidationError struct {
-	field  string
-	reason string
-	cause  error
-	key    bool
-}
-
-// Field function returns field value.
-func (e HealthCheckValidationError) Field() string { return e.field }
-
-// Reason function returns reason value.
-func (e HealthCheckValidationError) Reason() string { return e.reason }
-
-// Cause function returns cause value.
-func (e HealthCheckValidationError) Cause() error { return e.cause }
-
-// Key function returns key value.
-func (e HealthCheckValidationError) Key() bool { return e.key }
-
-// ErrorName returns error name.
-func (e HealthCheckValidationError) ErrorName() string { return "HealthCheckValidationError" }
-
-// Error satisfies the builtin error interface
-func (e HealthCheckValidationError) Error() string {
-	cause := ""
-	if e.cause != nil {
-		cause = fmt.Sprintf(" | caused by: %v", e.cause)
-	}
-
-	key := ""
-	if e.key {
-		key = "key for "
-	}
-
-	return fmt.Sprintf(
-		"invalid %sHealthCheck.%s: %s%s",
-		key,
-		e.field,
-		e.reason,
-		cause)
-}
-
-var _ error = HealthCheckValidationError{}
-
-var _ interface {
-	Field() string
-	Reason() string
-	Key() bool
-	Cause() error
-	ErrorName() string
-} = HealthCheckValidationError{}
-
 // Validate checks the field values on Upstream with the rules defined in the
 // proto definition for this message. If any rules are violated, an error is returned.
 func (m *Upstream) Validate() error {
@@ -186,10 +121,20 @@ func (m *Upstream) Validate() error {
 		}
 	}
 
-	if v, ok := interface{}(m.GetUpstreamId()).(interface{ Validate() error }); ok {
+	if v, ok := interface{}(m.GetId()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return UpstreamValidationError{
-				field:  "UpstreamId",
+				field:  "Id",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetChecks()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return UpstreamValidationError{
+				field:  "Checks",
 				reason: "embedded message failed validation",
 				cause:  err,
 			}
@@ -282,6 +227,813 @@ var _Upstream_PassHost_InLookup = map[string]struct{}{
 }
 
 var _Upstream_UpstreamHost_Pattern = regexp.MustCompile("^\\*?[0-9a-zA-Z-._]+$")
+
+// Validate checks the field values on HealthCheck with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *HealthCheck) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if m.GetActive() == nil {
+		return HealthCheckValidationError{
+			field:  "Active",
+			reason: "value is required",
+		}
+	}
+
+	if v, ok := interface{}(m.GetActive()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return HealthCheckValidationError{
+				field:  "Active",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetPassive()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return HealthCheckValidationError{
+				field:  "Passive",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	return nil
+}
+
+// HealthCheckValidationError is the validation error returned by
+// HealthCheck.Validate if the designated constraints aren't met.
+type HealthCheckValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e HealthCheckValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e HealthCheckValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e HealthCheckValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e HealthCheckValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e HealthCheckValidationError) ErrorName() string { return "HealthCheckValidationError" }
+
+// Error satisfies the builtin error interface
+func (e HealthCheckValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sHealthCheck.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = HealthCheckValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = HealthCheckValidationError{}
+
+// Validate checks the field values on ActiveHealthCheck with the rules defined
+// in the proto definition for this message. If any rules are violated, an
+// error is returned.
+func (m *ActiveHealthCheck) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if _, ok := _ActiveHealthCheck_Type_InLookup[m.GetType()]; !ok {
+		return ActiveHealthCheckValidationError{
+			field:  "Type",
+			reason: "value must be in list [http https tcp]",
+		}
+	}
+
+	if m.GetTimeout() < 0 {
+		return ActiveHealthCheckValidationError{
+			field:  "Timeout",
+			reason: "value must be greater than or equal to 0",
+		}
+	}
+
+	if m.GetConcurrency() < 0 {
+		return ActiveHealthCheckValidationError{
+			field:  "Concurrency",
+			reason: "value must be greater than or equal to 0",
+		}
+	}
+
+	if !_ActiveHealthCheck_Host_Pattern.MatchString(m.GetHost()) {
+		return ActiveHealthCheckValidationError{
+			field:  "Host",
+			reason: "value does not match regex pattern \"^\\\\*?[0-9a-zA-Z-._]+$\"",
+		}
+	}
+
+	if val := m.GetPort(); val < 1 || val > 65535 {
+		return ActiveHealthCheckValidationError{
+			field:  "Port",
+			reason: "value must be inside range [1, 65535]",
+		}
+	}
+
+	// no validation rules for HttpsVerifyCertificate
+
+	if v, ok := interface{}(m.GetHealthy()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ActiveHealthCheckValidationError{
+				field:  "Healthy",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetUnhealthy()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ActiveHealthCheckValidationError{
+				field:  "Unhealthy",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if len(m.GetReqHeaders()) < 1 {
+		return ActiveHealthCheckValidationError{
+			field:  "ReqHeaders",
+			reason: "value must contain at least 1 item(s)",
+		}
+	}
+
+	_ActiveHealthCheck_ReqHeaders_Unique := make(map[string]struct{}, len(m.GetReqHeaders()))
+
+	for idx, item := range m.GetReqHeaders() {
+		_, _ = idx, item
+
+		if _, exists := _ActiveHealthCheck_ReqHeaders_Unique[item]; exists {
+			return ActiveHealthCheckValidationError{
+				field:  fmt.Sprintf("ReqHeaders[%v]", idx),
+				reason: "repeated value must contain unique items",
+			}
+		} else {
+			_ActiveHealthCheck_ReqHeaders_Unique[item] = struct{}{}
+		}
+
+		// no validation rules for ReqHeaders[idx]
+	}
+
+	return nil
+}
+
+// ActiveHealthCheckValidationError is the validation error returned by
+// ActiveHealthCheck.Validate if the designated constraints aren't met.
+type ActiveHealthCheckValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ActiveHealthCheckValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ActiveHealthCheckValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ActiveHealthCheckValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ActiveHealthCheckValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ActiveHealthCheckValidationError) ErrorName() string {
+	return "ActiveHealthCheckValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ActiveHealthCheckValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sActiveHealthCheck.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ActiveHealthCheckValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ActiveHealthCheckValidationError{}
+
+var _ActiveHealthCheck_Type_InLookup = map[string]struct{}{
+	"http":  {},
+	"https": {},
+	"tcp":   {},
+}
+
+var _ActiveHealthCheck_Host_Pattern = regexp.MustCompile("^\\*?[0-9a-zA-Z-._]+$")
+
+// Validate checks the field values on PassiveHealthCheck with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *PassiveHealthCheck) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if _, ok := _PassiveHealthCheck_Type_InLookup[m.GetType()]; !ok {
+		return PassiveHealthCheckValidationError{
+			field:  "Type",
+			reason: "value must be in list [http https tcp]",
+		}
+	}
+
+	if v, ok := interface{}(m.GetHealthy()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return PassiveHealthCheckValidationError{
+				field:  "Healthy",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetUnhealthy()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return PassiveHealthCheckValidationError{
+				field:  "Unhealthy",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	return nil
+}
+
+// PassiveHealthCheckValidationError is the validation error returned by
+// PassiveHealthCheck.Validate if the designated constraints aren't met.
+type PassiveHealthCheckValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e PassiveHealthCheckValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e PassiveHealthCheckValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e PassiveHealthCheckValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e PassiveHealthCheckValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e PassiveHealthCheckValidationError) ErrorName() string {
+	return "PassiveHealthCheckValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e PassiveHealthCheckValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sPassiveHealthCheck.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = PassiveHealthCheckValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = PassiveHealthCheckValidationError{}
+
+var _PassiveHealthCheck_Type_InLookup = map[string]struct{}{
+	"http":  {},
+	"https": {},
+	"tcp":   {},
+}
+
+// Validate checks the field values on ActiveHealthCheckHealthy with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *ActiveHealthCheckHealthy) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if m.GetInterval() < 1 {
+		return ActiveHealthCheckHealthyValidationError{
+			field:  "Interval",
+			reason: "value must be greater than or equal to 1",
+		}
+	}
+
+	if len(m.GetHttpStatuses()) < 1 {
+		return ActiveHealthCheckHealthyValidationError{
+			field:  "HttpStatuses",
+			reason: "value must contain at least 1 item(s)",
+		}
+	}
+
+	_ActiveHealthCheckHealthy_HttpStatuses_Unique := make(map[int32]struct{}, len(m.GetHttpStatuses()))
+
+	for idx, item := range m.GetHttpStatuses() {
+		_, _ = idx, item
+
+		if _, exists := _ActiveHealthCheckHealthy_HttpStatuses_Unique[item]; exists {
+			return ActiveHealthCheckHealthyValidationError{
+				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+				reason: "repeated value must contain unique items",
+			}
+		} else {
+			_ActiveHealthCheckHealthy_HttpStatuses_Unique[item] = struct{}{}
+		}
+
+		if val := item; val < 200 || val > 599 {
+			return ActiveHealthCheckHealthyValidationError{
+				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+				reason: "value must be inside range [200, 599]",
+			}
+		}
+
+	}
+
+	if val := m.GetSuccesses(); val < 1 || val > 254 {
+		return ActiveHealthCheckHealthyValidationError{
+			field:  "Successes",
+			reason: "value must be inside range [1, 254]",
+		}
+	}
+
+	return nil
+}
+
+// ActiveHealthCheckHealthyValidationError is the validation error returned by
+// ActiveHealthCheckHealthy.Validate if the designated constraints aren't met.
+type ActiveHealthCheckHealthyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ActiveHealthCheckHealthyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ActiveHealthCheckHealthyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ActiveHealthCheckHealthyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ActiveHealthCheckHealthyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ActiveHealthCheckHealthyValidationError) ErrorName() string {
+	return "ActiveHealthCheckHealthyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ActiveHealthCheckHealthyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sActiveHealthCheckHealthy.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ActiveHealthCheckHealthyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ActiveHealthCheckHealthyValidationError{}
+
+// Validate checks the field values on ActiveHealthCheckUnhealthy with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *ActiveHealthCheckUnhealthy) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if m.GetInterval() < 1 {
+		return ActiveHealthCheckUnhealthyValidationError{
+			field:  "Interval",
+			reason: "value must be greater than or equal to 1",
+		}
+	}
+
+	if len(m.GetHttpStatuses()) < 1 {
+		return ActiveHealthCheckUnhealthyValidationError{
+			field:  "HttpStatuses",
+			reason: "value must contain at least 1 item(s)",
+		}
+	}
+
+	_ActiveHealthCheckUnhealthy_HttpStatuses_Unique := make(map[int32]struct{}, len(m.GetHttpStatuses()))
+
+	for idx, item := range m.GetHttpStatuses() {
+		_, _ = idx, item
+
+		if _, exists := _ActiveHealthCheckUnhealthy_HttpStatuses_Unique[item]; exists {
+			return ActiveHealthCheckUnhealthyValidationError{
+				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+				reason: "repeated value must contain unique items",
+			}
+		} else {
+			_ActiveHealthCheckUnhealthy_HttpStatuses_Unique[item] = struct{}{}
+		}
+
+		if val := item; val < 200 || val > 599 {
+			return ActiveHealthCheckUnhealthyValidationError{
+				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+				reason: "value must be inside range [200, 599]",
+			}
+		}
+
+	}
+
+	if val := m.GetHttpFailures(); val < 1 || val > 254 {
+		return ActiveHealthCheckUnhealthyValidationError{
+			field:  "HttpFailures",
+			reason: "value must be inside range [1, 254]",
+		}
+	}
+
+	if val := m.GetTcpFailures(); val < 1 || val > 254 {
+		return ActiveHealthCheckUnhealthyValidationError{
+			field:  "TcpFailures",
+			reason: "value must be inside range [1, 254]",
+		}
+	}
+
+	if val := m.GetTimeouts(); val < 1 || val > 254 {
+		return ActiveHealthCheckUnhealthyValidationError{
+			field:  "Timeouts",
+			reason: "value must be inside range [1, 254]",
+		}
+	}
+
+	return nil
+}
+
+// ActiveHealthCheckUnhealthyValidationError is the validation error returned
+// by ActiveHealthCheckUnhealthy.Validate if the designated constraints aren't met.
+type ActiveHealthCheckUnhealthyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ActiveHealthCheckUnhealthyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ActiveHealthCheckUnhealthyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ActiveHealthCheckUnhealthyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ActiveHealthCheckUnhealthyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ActiveHealthCheckUnhealthyValidationError) ErrorName() string {
+	return "ActiveHealthCheckUnhealthyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ActiveHealthCheckUnhealthyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sActiveHealthCheckUnhealthy.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ActiveHealthCheckUnhealthyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ActiveHealthCheckUnhealthyValidationError{}
+
+// Validate checks the field values on PassiveHealthCheckHealthy with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *PassiveHealthCheckHealthy) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if len(m.GetHttpStatuses()) < 1 {
+		return PassiveHealthCheckHealthyValidationError{
+			field:  "HttpStatuses",
+			reason: "value must contain at least 1 item(s)",
+		}
+	}
+
+	_PassiveHealthCheckHealthy_HttpStatuses_Unique := make(map[int32]struct{}, len(m.GetHttpStatuses()))
+
+	for idx, item := range m.GetHttpStatuses() {
+		_, _ = idx, item
+
+		if _, exists := _PassiveHealthCheckHealthy_HttpStatuses_Unique[item]; exists {
+			return PassiveHealthCheckHealthyValidationError{
+				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+				reason: "repeated value must contain unique items",
+			}
+		} else {
+			_PassiveHealthCheckHealthy_HttpStatuses_Unique[item] = struct{}{}
+		}
+
+		if val := item; val < 200 || val > 599 {
+			return PassiveHealthCheckHealthyValidationError{
+				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+				reason: "value must be inside range [200, 599]",
+			}
+		}
+
+	}
+
+	if val := m.GetSuccesses(); val < 1 || val > 254 {
+		return PassiveHealthCheckHealthyValidationError{
+			field:  "Successes",
+			reason: "value must be inside range [1, 254]",
+		}
+	}
+
+	return nil
+}
+
+// PassiveHealthCheckHealthyValidationError is the validation error returned by
+// PassiveHealthCheckHealthy.Validate if the designated constraints aren't met.
+type PassiveHealthCheckHealthyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e PassiveHealthCheckHealthyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e PassiveHealthCheckHealthyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e PassiveHealthCheckHealthyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e PassiveHealthCheckHealthyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e PassiveHealthCheckHealthyValidationError) ErrorName() string {
+	return "PassiveHealthCheckHealthyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e PassiveHealthCheckHealthyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sPassiveHealthCheckHealthy.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = PassiveHealthCheckHealthyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = PassiveHealthCheckHealthyValidationError{}
+
+// Validate checks the field values on PassiveHealthCheckUnhealthy with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *PassiveHealthCheckUnhealthy) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if len(m.GetHttpStatuses()) < 1 {
+		return PassiveHealthCheckUnhealthyValidationError{
+			field:  "HttpStatuses",
+			reason: "value must contain at least 1 item(s)",
+		}
+	}
+
+	_PassiveHealthCheckUnhealthy_HttpStatuses_Unique := make(map[int32]struct{}, len(m.GetHttpStatuses()))
+
+	for idx, item := range m.GetHttpStatuses() {
+		_, _ = idx, item
+
+		if _, exists := _PassiveHealthCheckUnhealthy_HttpStatuses_Unique[item]; exists {
+			return PassiveHealthCheckUnhealthyValidationError{
+				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+				reason: "repeated value must contain unique items",
+			}
+		} else {
+			_PassiveHealthCheckUnhealthy_HttpStatuses_Unique[item] = struct{}{}
+		}
+
+		if val := item; val < 200 || val > 599 {
+			return PassiveHealthCheckUnhealthyValidationError{
+				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+				reason: "value must be inside range [200, 599]",
+			}
+		}
+
+	}
+
+	if val := m.GetHttpFailures(); val < 1 || val > 254 {
+		return PassiveHealthCheckUnhealthyValidationError{
+			field:  "HttpFailures",
+			reason: "value must be inside range [1, 254]",
+		}
+	}
+
+	if val := m.GetTcpFailures(); val < 1 || val > 254 {
+		return PassiveHealthCheckUnhealthyValidationError{
+			field:  "TcpFailures",
+			reason: "value must be inside range [1, 254]",
+		}
+	}
+
+	if val := m.GetTimeouts(); val < 1 || val > 254 {
+		return PassiveHealthCheckUnhealthyValidationError{
+			field:  "Timeouts",
+			reason: "value must be inside range [1, 254]",
+		}
+	}
+
+	return nil
+}
+
+// PassiveHealthCheckUnhealthyValidationError is the validation error returned
+// by PassiveHealthCheckUnhealthy.Validate if the designated constraints
+// aren't met.
+type PassiveHealthCheckUnhealthyValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e PassiveHealthCheckUnhealthyValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e PassiveHealthCheckUnhealthyValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e PassiveHealthCheckUnhealthyValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e PassiveHealthCheckUnhealthyValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e PassiveHealthCheckUnhealthyValidationError) ErrorName() string {
+	return "PassiveHealthCheckUnhealthyValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e PassiveHealthCheckUnhealthyValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sPassiveHealthCheckUnhealthy.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = PassiveHealthCheckUnhealthyValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = PassiveHealthCheckUnhealthyValidationError{}
 
 // Validate checks the field values on Upstream_Timeout with the rules defined
 // in the proto definition for this message. If any rules are violated, an
