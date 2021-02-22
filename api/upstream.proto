@@ -5,11 +5,6 @@ option go_package = ".;apisix";
 import "base.proto";
 import "validate/validate.proto";
 
-// [#protodoc-title: The Apache APISIX Upstream Health Check configuration]
-message HealthCheck {
-
-}
-
 // [#protodoc-title: The Apache APISIX Upstream configuration]
 message Upstream {
   // How many times a request can be retried while communicating to the upstream,
@@ -62,5 +57,131 @@ message Upstream {
   // Textual descriptions used to describe the upstream use.
   string desc = 11 [(validate.rules).string.max_len = 256];
   // The upstream id.
-  ID upstream_id = 12;
+  ID id = 12;
+  // Health check settings.
+  HealthCheck checks = 13;
+}
+
+// [#protodoc-title: The Apache APISIX Upstream Health Check configuration]
+message HealthCheck {
+  // Active health check settings.
+  ActiveHealthCheck active = 1 [(validate.rules).message.required = true];
+  // Passive health check settings.
+  PassiveHealthCheck passive = 2;
+}
+
+// [#protodoc-title: Acitve Health Check configuration]
+message ActiveHealthCheck {
+  // The health check probe type.
+  string type = 1 [(validate.rules).string = {
+    in: [
+      "http", "https", "tcp"
+    ]
+  }];
+  // Timeout setting for the probe requests.
+  double timeout = 2 [(validate.rules).double = {gte: 0, ignore_empty: true}];
+  // How many probes can be sent simultaneously.
+  int32 concurrency = 3 [(validate.rules).int32 = {gte: 0, ignore_empty: true}];
+  // Host value for HTTP probes.
+  string host = 4 [(validate.rules).string.pattern = "^\\*?[0-9a-zA-Z-._]+$"];
+  // Specified port for the probe to sent.
+  int32 port = 5 [(validate.rules).int32 = {gte: 1, lte: 65535}];
+  // the URI path for HTTP probes.
+  string http_path = 6 [(validate.rules).string.ignore_empty = true];
+  // Whether to verify the TLS/SSL certificate.
+  bool https_verify_certificate = 7;
+  // health check for judging nodes become healthy.
+  ActiveHealthCheckHealthy healthy = 8;
+  // health check for judging nodes become unhealthy.
+  ActiveHealthCheckUnhealthy unhealthy = 9;
+  // The extra request headers to carry for HTTP probes.
+  repeated string req_headers = 10 [(validate.rules).repeated = {
+    unique: true,
+    min_items: 1,
+    ignore_empty: true
+  }];
+}
+
+// [#protodoc-title: Passive Health Check configuration]
+message PassiveHealthCheck {
+  // The health check probe type.
+  string type = 1 [(validate.rules).string = {
+    in: [
+      "http", "https", "tcp"
+    ]
+  }];
+  PassiveHealthCheckHealthy healthy = 2;
+  PassiveHealthCheckUnhealthy unhealthy = 3;
+}
+
+// [#protodoc-title: Active Health Check configuration for judging nodes become healthy]
+message ActiveHealthCheckHealthy {
+  // The interval to send a probe request.
+  int32 interval = 1 [(validate.rules).int32 = {gte: 1, ignore_empty: true}];
+  // Probes with status codes in this array will be treated as healthy.
+  repeated int32 http_statuses = 2 [
+    (validate.rules).repeated = {
+      unique: true,
+      min_items: 1,
+      ignore_empty: true,
+    },
+    (validate.rules).repeated.items.int32 = {gte: 200, lte: 599}
+  ];
+  // How many consecutive success times should meet before a node is set to healthy.
+  int32 successes = 3 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
+}
+
+// [#protodoc-title: Active Health Check configuration for judging nodes become unhealthy]
+message ActiveHealthCheckUnhealthy {
+  // The interval to send a probe request.
+  int32 interval = 1 [(validate.rules).int32 = {gte: 1, ignore_empty: true}];
+  // Probes with status codes in this array will be treated as unhealthy.
+  repeated int32 http_statuses = 2 [
+    (validate.rules).repeated = {
+      unique: true,
+      min_items: 1,
+      ignore_empty: true,
+    },
+    (validate.rules).repeated.items.int32 = {gte: 200, lte: 599}
+  ];
+  // How many consecutive failures (http) occur should meet before a node is set to healthy.
+  int32 http_failures = 3 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
+  // How many consecutive failures (tcp) occur should meet before a node is set to healthy.
+  int32 tcp_failures = 4 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
+  // How many consecutive timeouts occur should meet before a node is set to healthy.
+  int32 timeouts = 5 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
+}
+
+// [#protodoc-title: Passive Health Check configuration for judging nodes become healthy]
+message PassiveHealthCheckHealthy {
+  // Probes with status codes in this array will be treated as healthy.
+  repeated int32 http_statuses = 1 [
+    (validate.rules).repeated = {
+      unique: true,
+      min_items: 1,
+      ignore_empty: true,
+    },
+    (validate.rules).repeated.items.int32 = {gte: 200, lte: 599}
+  ];
+  // How many consecutive success times should meet before a node is set to healthy.
+  int32 successes = 2 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
+}
+
+// [#protodoc-title: Passive Health Check configuration for judging nodes become unhealthy]
+message PassiveHealthCheckUnhealthy {
+  // Probes with status codes in this array will be treated as unhealthy.
+  repeated int32 http_statuses = 1 [
+    (validate.rules).repeated = {
+      unique: true,
+      min_items: 1,
+      ignore_empty: true,
+    },
+    (validate.rules).repeated.items.int32 = {gte: 200, lte: 599}
+  ];
+  // How many consecutive failures (http) occur should meet before a node is set to healthy.
+  int32 http_failures = 2 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
+  // How many consecutive failures (tcp) occur should meet before a node is set to healthy.
+  int32 tcp_failures = 3 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
+  // How many consecutive timeouts occur should meet before a node is set to healthy.
+  int32 timeouts = 4 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
 }
