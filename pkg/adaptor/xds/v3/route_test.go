@@ -3,17 +3,13 @@ package v3
 import (
 	"testing"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
-
-	"github.com/api7/apisix-mesh-agent/pkg/id"
-
-	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
-
 	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
-
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/api7/apisix-mesh-agent/pkg/id"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
+	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 	matcherv3 "github.com/envoyproxy/go-control-plane/envoy/type/matcher/v3"
 )
 

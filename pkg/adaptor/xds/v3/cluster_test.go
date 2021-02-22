@@ -3,14 +3,11 @@ package v3
 import (
 	"testing"
 
-	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
-
-	"github.com/golang/protobuf/ptypes/wrappers"
-
-	endpointv3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
-
 	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
+	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	endpointv3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	"github.com/golang/protobuf/ptypes/duration"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/api7/apisix-mesh-agent/pkg/log"
