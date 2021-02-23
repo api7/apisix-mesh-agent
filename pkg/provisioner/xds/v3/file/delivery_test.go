@@ -3,8 +3,6 @@ package file
 import (
 	"testing"
 
-	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
-
 	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	endpointv3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
@@ -19,6 +17,7 @@ import (
 	"github.com/api7/apisix-mesh-agent/pkg/config"
 	"github.com/api7/apisix-mesh-agent/pkg/id"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
+	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
 
 func TestProcessRouteConfigurationV3(t *testing.T) {

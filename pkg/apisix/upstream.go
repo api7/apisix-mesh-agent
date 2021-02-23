@@ -1,8 +1,9 @@
 package apisix
 
 import (
-	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
 
 // CompareUpstreams diffs two apisix.Upstreams array and finds the new adds, updates

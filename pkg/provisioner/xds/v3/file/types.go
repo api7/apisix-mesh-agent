@@ -5,12 +5,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"google.golang.org/protobuf/proto"
-
 	discoveryv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/fsnotify/fsnotify"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	xdsv3 "github.com/api7/apisix-mesh-agent/pkg/adaptor/xds/v3"
 	"github.com/api7/apisix-mesh-agent/pkg/config"
