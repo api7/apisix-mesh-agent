@@ -21,4 +21,4 @@ jobs:
     - name: Upload Coverage Profile
       working-directory: ./
       run: |
-        bash <(curl -s https://codecov.io/bash)
+        bash <(curl -s https://codecov.io/bash) -t 615ec963-1638-4ca8-956c-7e33be81fd44
