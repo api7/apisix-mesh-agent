@@ -72,7 +72,7 @@ configurations and delivery them to APISIX even if then don't use mesh.
 ## Adaptor
 
 Adaptor is the abstraction of data translator. It converts data from one type to another. There is not
-a superclass defintion for it because it depends on the original type. It's used by Provisioner, so
+a superclass definition for it because it depends on the original type. It's used by Provisioner, so
 one Provisioner should have a matched Adaptor. Take xDS for example, there is a
 `XDSAdaptor` for the xDS version 3.
 
