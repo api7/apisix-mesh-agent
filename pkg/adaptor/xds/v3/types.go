@@ -3,13 +3,13 @@ package v3
 import (
 	"errors"
 
+	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	endpointv3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
+	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 
 	"github.com/api7/apisix-mesh-agent/pkg/config"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
-	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
-	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 )
 
 var (
