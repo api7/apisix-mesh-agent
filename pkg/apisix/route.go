@@ -9,7 +9,7 @@ import (
 // CompareRoutes diffs two apisix.Route array and finds the new adds, updates
 // and deleted ones. Note it stands on the first apisix.Route array's point
 // of view.
-func CompareRoutes(r1 []*apisix.Route, r2 []*apisix.Route) (added, deleted, updated []*apisix.Route) {
+func CompareRoutes(r1, r2 []*apisix.Route) (added, deleted, updated []*apisix.Route) {
 	if r1 == nil {
 		return r2, nil, nil
 	}
