@@ -4,6 +4,7 @@ option go_package = ".;apisix";
 
 import "base.proto";
 import "validate/validate.proto";
+import "google/protobuf/any.proto";
 
 // [#protodoc-title: The Apache APISIX Upstream configuration]
 message Upstream {
@@ -60,6 +61,8 @@ message Upstream {
   ID id = 12;
   // Health check settings.
   HealthCheck checks = 13;
+  // Upstream nodes.
+  repeated Node nodes = 14;
 }
 
 // [#protodoc-title: The Apache APISIX Upstream Health Check configuration]
@@ -184,4 +187,15 @@ message PassiveHealthCheckUnhealthy {
   int32 tcp_failures = 3 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
   // How many consecutive timeouts occur should meet before a node is set to healthy.
   int32 timeouts = 4 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
+}
+
+// [#protodoc-title: Upstream Node]
+message Node {
+  // The endpoint host (could be IPv4/IPv6 or domain).
+  string host = 1 [(validate.rules).string.pattern = "^\\*?[0-9a-zA-Z-._]+$"];
+  // The endpoint port.
+  int32 port = 2 [(validate.rules).int32 = {gte: 1, lte: 65535}];
+  // The endpoint weight.
+  int32 weight = 3 [(validate.rules).int32 = {gte: 0}];
+  map<string, google.protobuf.Any> metadata = 4;
 }

@@ -1,0 +1,10 @@
+{
+  "versionInfo": "0",
+  "resources": [
+    {
+      "@type": "type.googleapis.com/envoy.config.cluster.v3.Cluster",
+      "name": "httpbin.default.svc.cluster.local",
+      "type": "EDS"
+    }
+  ]
+}

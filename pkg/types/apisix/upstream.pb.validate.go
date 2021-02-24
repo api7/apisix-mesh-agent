@@ -141,6 +141,21 @@ func (m *Upstream) Validate() error {
 		}
 	}
 
+	for idx, item := range m.GetNodes() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return UpstreamValidationError{
+					field:  fmt.Sprintf("Nodes[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
 	return nil
 }
 
@@ -1034,6 +1049,110 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = PassiveHealthCheckUnhealthyValidationError{}
+
+// Validate checks the field values on Node with the rules defined in the proto
+// definition for this message. If any rules are violated, an error is returned.
+func (m *Node) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if !_Node_Host_Pattern.MatchString(m.GetHost()) {
+		return NodeValidationError{
+			field:  "Host",
+			reason: "value does not match regex pattern \"^\\\\*?[0-9a-zA-Z-._]+$\"",
+		}
+	}
+
+	if val := m.GetPort(); val < 1 || val > 65535 {
+		return NodeValidationError{
+			field:  "Port",
+			reason: "value must be inside range [1, 65535]",
+		}
+	}
+
+	if m.GetWeight() < 0 {
+		return NodeValidationError{
+			field:  "Weight",
+			reason: "value must be greater than or equal to 0",
+		}
+	}
+
+	for key, val := range m.GetMetadata() {
+		_ = val
+
+		// no validation rules for Metadata[key]
+
+		if v, ok := interface{}(val).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return NodeValidationError{
+					field:  fmt.Sprintf("Metadata[%v]", key),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// NodeValidationError is the validation error returned by Node.Validate if the
+// designated constraints aren't met.
+type NodeValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e NodeValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e NodeValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e NodeValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e NodeValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e NodeValidationError) ErrorName() string { return "NodeValidationError" }
+
+// Error satisfies the builtin error interface
+func (e NodeValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sNode.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = NodeValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = NodeValidationError{}
+
+var _Node_Host_Pattern = regexp.MustCompile("^\\*?[0-9a-zA-Z-._]+$")
 
 // Validate checks the field values on Upstream_Timeout with the rules defined
 // in the proto definition for this message. If any rules are violated, an
