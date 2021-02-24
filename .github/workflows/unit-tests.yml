@@ -3,10 +3,10 @@ name: Unit Test Suites
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 jobs:
   run-test:
     runs-on: ubuntu-latest
