@@ -5,6 +5,7 @@ This article explains the internal design of apisix-mesh-agent.
 ## Status
 
 - Written for the first time on 2021/02/23, add provisioner and adaptor explains.
+- Revised on 2021/02/24, add cache explains.
 
 ## Table of Contents
 
