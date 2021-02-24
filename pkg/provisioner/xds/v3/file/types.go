@@ -1,22 +1,17 @@
-package xds
+package file
 
 import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
-	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	discoveryv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"github.com/fsnotify/fsnotify"
-	"github.com/golang/protobuf/ptypes/any"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 
 	xdsv3 "github.com/api7/apisix-mesh-agent/pkg/adaptor/xds/v3"
-	apisixutil "github.com/api7/apisix-mesh-agent/pkg/apisix"
 	"github.com/api7/apisix-mesh-agent/pkg/config"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
 	"github.com/api7/apisix-mesh-agent/pkg/provisioner"
@@ -24,43 +19,25 @@ import (
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
 
-type resourceManifest struct {
-	routes    []*apisix.Route
-	upstreams []*apisix.Upstream
-}
-
-// diffFrom checks the difference between rm and rm2 from rm's point of view.
-func (rm *resourceManifest) diffFrom(rm2 *resourceManifest) (*resourceManifest, *resourceManifest, *resourceManifest) {
-	var (
-		added   resourceManifest
-		updated resourceManifest
-		deleted resourceManifest
-	)
-
-	a, d, u := apisixutil.CompareRoutes(rm.routes, rm2.routes)
-	added.routes = append(added.routes, a...)
-	updated.routes = append(updated.routes, u...)
-	deleted.routes = append(deleted.routes, d...)
-	return &added, &deleted, &updated
-}
-
 type xdsFileProvisioner struct {
-	logger    *log.Logger
-	watcher   *fsnotify.Watcher
-	evChan    chan []types.Event
-	v3Adaptor xdsv3.Adaptor
-	files     []string
-	state     map[string]*resourceManifest
+	logger                  *log.Logger
+	watcher                 *fsnotify.Watcher
+	evChan                  chan []types.Event
+	v3Adaptor               xdsv3.Adaptor
+	files                   []string
+	state                   map[string]*manifest
+	upstreamCache           map[string]*apisix.Upstream
+	updatedUpstreamsFromEDS map[string][]*apisix.Upstream
 }
 
-// NewXDSProvisionerFromFiles creates a files backed Provisioner, it watches
+// NewXDSProvisioner creates a files backed Provisioner, it watches
 // on the given files/directories, files will be parsed into xDS objects,
 // invalid items will be ignored but leave with a log.
 // Note files watched by this Provisioner should be in the format DiscoveryResponse
 // (see https://github.com/envoyproxy/data-plane-api/blob/main/envoy/service/discovery/v3/discovery.proto#L68
 // for more details).
 // Currently only JSON are suppported as the file type and only xDS V3 are supported.
-func NewXDSProvisionerFromFiles(cfg *config.Config) (provisioner.Provisioner, error) {
+func NewXDSProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
@@ -78,12 +55,14 @@ func NewXDSProvisionerFromFiles(cfg *config.Config) (provisioner.Provisioner, er
 		return nil, err
 	}
 	p := &xdsFileProvisioner{
-		watcher:   watcher,
-		logger:    logger,
-		v3Adaptor: adaptor,
-		evChan:    make(chan []types.Event),
-		files:     cfg.XDSWatchFiles,
-		state:     make(map[string]*resourceManifest),
+		watcher:                 watcher,
+		logger:                  logger,
+		v3Adaptor:               adaptor,
+		evChan:                  make(chan []types.Event),
+		files:                   cfg.XDSWatchFiles,
+		state:                   make(map[string]*manifest),
+		upstreamCache:           make(map[string]*apisix.Upstream),
+		updatedUpstreamsFromEDS: make(map[string][]*apisix.Upstream),
 	}
 	return p, nil
 }
@@ -120,17 +99,18 @@ func (p *xdsFileProvisioner) Run(stop chan struct{}) error {
 				zap.Error(err),
 			)
 		case ev := <-p.watcher.Events:
-			if ev.Op != fsnotify.Write && ev.Op != fsnotify.Remove {
+			switch ev.Op {
+			case fsnotify.Create, fsnotify.Write, fsnotify.Remove:
+				p.logger.Infow("file change event arrived",
+					zap.String("filename", ev.Name),
+					zap.String("type", ev.Op.String()),
+				)
+			default:
 				p.logger.Debugw("ignore unnecessary file change event",
 					zap.String("filename", ev.Name),
 					zap.String("type", ev.Op.String()),
 				)
 				continue
-			} else {
-				p.logger.Infow("file change event arrived",
-					zap.String("filename", ev.Name),
-					zap.String("type", ev.Op.String()),
-				)
 			}
 			p.handleFileEvent(ev)
 		}
@@ -205,6 +185,18 @@ func (p *xdsFileProvisioner) handleFileEvent(ev fsnotify.Event) {
 		rmo, ok := p.state[ev.Name]
 		if ok {
 			events = p.generateEvents(ev.Name, rmo, nil)
+			// Upstreams which nodes are supported by EDS should reset
+			// its nodes to nil, the event should be update, not delete.
+			for _, ups := range p.updatedUpstreamsFromEDS[ev.Name] {
+				// Do not modify the original ups to avoid race conditions.
+				newUps := proto.Clone(ups).(*apisix.Upstream)
+				newUps.Nodes = nil
+				events = append(events, types.Event{
+					Type:   types.EventUpdate,
+					Object: newUps,
+				})
+			}
+			delete(p.updatedUpstreamsFromEDS, ev.Name)
 		}
 	}
 
@@ -221,14 +213,40 @@ func (p *xdsFileProvisioner) generateEventsFromDiscoveryResponseV3(filename stri
 		zap.Any("content", dr),
 	)
 	var (
-		rm resourceManifest
+		rm               manifest
+		updatedUpstreams []*apisix.Upstream
 	)
 	for _, res := range dr.GetResources() {
 		switch res.GetTypeUrl() {
 		case "type.googleapis.com/envoy.config.route.v3.RouteConfiguration":
-			rm.routes = append(rm.routes, p.processRouteConfigurationV3(res)...)
+			rm.Routes = append(rm.Routes, p.processRouteConfigurationV3(res)...)
 		case "type.googleapis.com/envoy.config.cluster.v3.Cluster":
-			rm.upstreams = append(rm.upstreams, p.processClusterV3(res)...)
+			rm.Upstreams = append(rm.Upstreams, p.processClusterV3(res)...)
+		case "type.googleapis.com/envoy.config.endpoint.v3.ClusterLoadAssignment":
+			var slot int
+			ups := p.processClusterLoadAssignmentV3(res)
+			for i := 0; i < len(ups); i++ {
+				var found bool
+				for j := 0; j < len(rm.Upstreams); j++ {
+					// EDS should be merged to the CDS if the CDS are in the
+					// same DiscoveryResponse.
+					if rm.Upstreams[i].Name == ups[i].Name {
+						found = true
+						rm.Upstreams[i] = ups[i]
+						break
+					}
+					// else the upstreams generated by EDS should be appended.
+				}
+				if !found {
+					ups[slot] = ups[i]
+					slot++
+				}
+			}
+			for i := slot; i < len(ups); i++ {
+				ups[i] = nil
+			}
+			ups = ups[:slot]
+			updatedUpstreams = append(updatedUpstreams, ups...)
 		default:
 			p.logger.Warnw("ignore unnecessary resource",
 				zap.String("type", res.GetTypeUrl()),
@@ -236,15 +254,37 @@ func (p *xdsFileProvisioner) generateEventsFromDiscoveryResponseV3(filename stri
 			)
 		}
 	}
-	rmo := p.state[filename]
-	return p.generateEvents(filename, rmo, &rm)
+	evs := p.generateEvents(filename, p.state[filename], &rm)
+
+	if len(updatedUpstreams) > 0 {
+		updatedUpstreamsFromEDS := p.updatedUpstreamsFromEDS[filename]
+		// These upstreams updated since EDS config change.
+		// While EDS config might in different files, we cannot just append them to
+		// `rm` or update event will be set to add (since the last state of EDS
+		// config file might not in p.state). So here we process them specially.
+		for _, ups := range updatedUpstreams {
+			evs = append(evs, types.Event{
+				Type:   types.EventUpdate,
+				Object: ups,
+			})
+			updatedUpstreamsFromEDS = append(updatedUpstreamsFromEDS, ups)
+		}
+
+		p.updatedUpstreamsFromEDS[filename] = updatedUpstreamsFromEDS
+		p.logger.Debugw("found upstream changes due to EDS config",
+			zap.String("filename", filename),
+			zap.Any("upstreams", updatedUpstreams),
+		)
+	}
+
+	return evs
 }
 
-func (p *xdsFileProvisioner) generateEvents(filename string, rmo, rm *resourceManifest) []types.Event {
+func (p *xdsFileProvisioner) generateEvents(filename string, rmo, rm *manifest) []types.Event {
 	var (
-		added   *resourceManifest
-		deleted *resourceManifest
-		updated *resourceManifest
+		added   *manifest
+		deleted *manifest
+		updated *manifest
 	)
 	if rmo == nil {
 		added = rm
@@ -263,92 +303,26 @@ func (p *xdsFileProvisioner) generateEvents(filename string, rmo, rm *resourceMa
 
 	var count int
 	if added != nil {
-		count += len(added.routes)
+		count += added.size()
 	}
 	if deleted != nil {
-		count += len(deleted.routes)
+		count += deleted.size()
 	}
 	if updated != nil {
-		count += len(updated.routes)
+		count += updated.size()
 	}
 	if count == 0 {
 		return nil
 	}
 	events := make([]types.Event, 0, count)
 	if added != nil {
-		for _, r := range added.routes {
-			events = append(events, types.Event{
-				Type:   types.EventAdd,
-				Object: r,
-			})
-		}
+		events = append(events, added.events(types.EventAdd)...)
 	}
 	if deleted != nil {
-		for _, r := range deleted.routes {
-			events = append(events, types.Event{
-				Type:      types.EventDelete,
-				Tombstone: r,
-			})
-		}
+		events = append(events, deleted.events(types.EventDelete)...)
 	}
 	if updated != nil {
-		for _, r := range updated.routes {
-			events = append(events, types.Event{
-				Type:   types.EventUpdate,
-				Object: r,
-			})
-		}
+		events = append(events, updated.events(types.EventUpdate)...)
 	}
 	return events
-}
-
-func (p *xdsFileProvisioner) processRouteConfigurationV3(res *any.Any) []*apisix.Route {
-	var route routev3.RouteConfiguration
-	err := anypb.UnmarshalTo(res, &route, proto.UnmarshalOptions{
-		DiscardUnknown: true,
-	})
-	if err != nil {
-		p.logger.Errorw("found invalid RouteConfiguration resource",
-			zap.Error(err),
-			zap.Any("resource", res),
-		)
-		return nil
-	}
-
-	routes, err := p.v3Adaptor.TranslateRouteConfiguration(&route)
-	if err != nil {
-		p.logger.Errorw("failed to translate RouteConfiguration to APISIX routes",
-			zap.Error(err),
-			zap.Any("route", &route),
-		)
-	}
-	return routes
-}
-
-func (p *xdsFileProvisioner) processClusterV3(res *any.Any) []*apisix.Upstream {
-	var cluster clusterv3.Cluster
-	err := anypb.UnmarshalTo(res, &cluster, proto.UnmarshalOptions{
-		DiscardUnknown: true,
-	})
-	if err != nil {
-		p.logger.Errorw("found invalid Cluster resource",
-			zap.Error(err),
-			zap.Any("resource", res),
-		)
-		return nil
-	}
-	ups, err := p.v3Adaptor.TranslateCluster(&cluster)
-	if err != nil && err != xdsv3.ErrRequireFurtherEDS {
-		p.logger.Errorw("failed to translate Cluster to APISIX routes",
-			zap.Error(err),
-			zap.Any("cluster", &cluster),
-		)
-		return nil
-	}
-	if err == xdsv3.ErrRequireFurtherEDS {
-		p.logger.Warnw("cluster depends on another EDS config, an upstream withou nodes setting was generated",
-			zap.Any("upstream", ups),
-		)
-	}
-	return []*apisix.Upstream{ups}
 }

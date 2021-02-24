@@ -26,6 +26,9 @@ func (adaptor *adaptor) TranslateCluster(c *clusterv3.Cluster) (*apisix.Upstream
 		return nil, err
 	}
 	if err := adaptor.translateClusterLoadAssignments(c, ups); err != nil {
+		if err == ErrRequireFurtherEDS {
+			return ups, err
+		}
 		return nil, err
 	}
 
