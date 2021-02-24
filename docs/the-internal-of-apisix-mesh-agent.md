@@ -12,7 +12,7 @@ This article explains the internal design of apisix-mesh-agent.
 ## Overview
 
 The apisix-mesh-agent is modular, each modular exposes interfaces to let others invoke it.
-Now it has three modules: Provisioner, Adaptor, Cache. The dependency relationships between them are depicted by the following illustration.
+Now it has three modules: [Provisioner](#provisioner), [Adaptor](#adaptor), [Cache](#cache). The dependency relationships between them are depicted by the following illustration.
 
 ## Provisioner
 
