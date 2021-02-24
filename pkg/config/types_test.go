@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,4 +17,7 @@ func TestConfigValidate(t *testing.T) {
 	cfg := NewDefaultConfig()
 	cfg.Provisioner = "redis"
 	assert.Equal(t, cfg.Validate(), ErrUnknownProvisioner)
+
+	cfg.Provisioner = ""
+	assert.Equal(t, cfg.Validate(), errors.New("unspecified provisioner"))
 }
