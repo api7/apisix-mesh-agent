@@ -20,4 +20,12 @@ func TestConfigValidate(t *testing.T) {
 
 	cfg.Provisioner = ""
 	assert.Equal(t, cfg.Validate(), errors.New("unspecified provisioner"))
+
+	cfg = NewDefaultConfig()
+	cfg.GRPCListen = "127:8080"
+	assert.Equal(t, cfg.Validate(), ErrBadGRPCListen)
+	cfg.GRPCListen = "127.0.0.1:aa"
+	assert.Equal(t, cfg.Validate(), ErrBadGRPCListen)
+	cfg.GRPCListen = "hello"
+	assert.Equal(t, cfg.Validate(), ErrBadGRPCListen)
 }

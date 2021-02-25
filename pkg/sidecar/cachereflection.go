@@ -2,6 +2,7 @@ package sidecar
 
 import (
 	"errors"
+	"sync/atomic"
 
 	"go.uber.org/zap"
 
@@ -57,6 +58,12 @@ func (s *Sidecar) reflectToCache(events []types.Event) {
 				zap.Any("event", ev),
 				zap.Error(err),
 			)
+		}
+		for {
+			rev := atomic.LoadInt64(&s.revision)
+			if atomic.CompareAndSwapInt64(&s.revision, rev, rev+1) {
+				break
+			}
 		}
 	}
 }

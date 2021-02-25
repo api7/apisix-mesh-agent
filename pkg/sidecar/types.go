@@ -1,21 +1,30 @@
 package sidecar
 
 import (
+	"net"
+	"sync/atomic"
+
+	"github.com/api7/apisix-mesh-agent/pkg/etcdv3"
+
+	"go.uber.org/zap"
+
 	"github.com/api7/apisix-mesh-agent/pkg/cache"
 	"github.com/api7/apisix-mesh-agent/pkg/config"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
 	"github.com/api7/apisix-mesh-agent/pkg/provisioner"
 	xdsv3file "github.com/api7/apisix-mesh-agent/pkg/provisioner/xds/v3/file"
 	"github.com/api7/apisix-mesh-agent/pkg/types"
-	"go.uber.org/zap"
 )
 
 // Sidecar is the entity to joint provisioner, cache, etcd and launch
 // the program.
 type Sidecar struct {
-	logger      *log.Logger
-	provisioner provisioner.Provisioner
-	cache       cache.Cache
+	logger       *log.Logger
+	provisioner  provisioner.Provisioner
+	cache        cache.Cache
+	grpcListener net.Listener
+	etcdSrv      etcdv3.EtcdV3
+	revision     int64
 }
 
 // NewSidecar creates a Sidecar object.
@@ -33,11 +42,22 @@ func NewSidecar(cfg *config.Config) (*Sidecar, error) {
 		return nil, err
 	}
 
-	return &Sidecar{
-		logger:      logger,
-		provisioner: p,
-		cache:       cache.NewInMemoryCache(),
-	}, nil
+	li, err := net.Listen("tcp", cfg.GRPCListen)
+	if err != nil {
+		return nil, err
+	}
+	s := &Sidecar{
+		grpcListener: li,
+		logger:       logger,
+		provisioner:  p,
+		cache:        cache.NewInMemoryCache(),
+	}
+	etcd, err := etcdv3.NewEtcdV3Server(cfg, s.cache, s)
+	if err != nil {
+		return nil, err
+	}
+	s.etcdSrv = etcd
+	return s, nil
 }
 
 // Run runs the sidecar program.
@@ -72,6 +92,11 @@ func (s *Sidecar) reflectToLog(events []types.Event) {
 	s.logger.Debugw("events arrived from provisioner",
 		zap.Any("events", events),
 	)
+}
+
+// Revision implements etcdv3.Revisioner.
+func (s *Sidecar) Revision() int64 {
+	return atomic.LoadInt64(&s.revision)
 }
 
 func newProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {

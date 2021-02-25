@@ -1,6 +1,9 @@
 # ETCD v3 API Mimicking
 
-This article explains the mimicking of [ETCD v3 API](https://etcd.io/docs/current/learning/api/).
+This article explains the mimicking of [ETCD v3 API](https://etcd.io/docs/current/learning/api/), it also registers the
+level of API conformance.
+
+Note this it not a generic implementation for ETCD v3 API, it's specific for [Apache APISIX](http://apisix.apache.org/).
 
 ## Table of Contents
 
@@ -8,6 +11,8 @@ This article explains the mimicking of [ETCD v3 API](https://etcd.io/docs/curren
 - [Mimicking Principles](#mimicking-principles)
 - [Data Source](#data-source)
 - [Key Value Metadata](#key-value-metadata)
+- [API Conformance](#api-conformance)
+    - [RangeRequest](#rangerequest)
 
 ## Why
 
@@ -31,6 +36,11 @@ For the sake of observability, the mimic ETCD API should be accessed normally fr
 so [gRPC](https://grpc.io/) will be chosen as the protocol. However, Apache APISIX relies on HTTP restful APIs, which supported by
 the [gRPC-Gateway](https://grpc-ecosystem.github.io/grpc-gateway/), so it's also required for apisix-mesh-agent.
 
+Since this solution is exclusive for Apache APISIX, addressable key formats are also fixed, basically key should be like:
+
+- `/apisix/routes/{id}`
+- `/apisix/upstreams/{id}`
+
 ## Data Source
 
 Although apisix-mesh-agent mimics the ETCD v3 API, it doesn't inherit the persistence of ETCD.
@@ -42,4 +52,59 @@ deliveries them to the watch clients.
 ## Key Value Metadata
 
 [Metadata](https://github.com/etcd-io/etcd/blob/master/api/mvccpb/kv.proto#L12) in the KV response of
-ETCD v3 API. All of them should also be filled but not be accurate, as long as values like `mod_revision` doesn't drift.
+ETCD v3 API. apisix-mesh-agent mimics the revision, it increases the revision once events arrived from
+[Provisioner](./the-internal-of-apisix-mesh-agent.md#Provisioner). the metadata will be filled according
+to the point of time that the data set to cache.
+
+Metadata might change after apisix-mesh-agent restarts, it's no matter since Apache APISIX will synchronize
+from apisix-mesh-agent periodically.
+
+## API Conformance
+
+It's worth mentioning that not all features in `RangeRequest`, `WatchRequest` and others are supported,
+only the used parts are implemented.
+
+### RangeRequest
+
+The implementation will check the `RangeRequest` from clients, if any unsupported features are touched,
+error will be thrown.
+
+* Only support exact key query or `readdir` styled range query are supported.
+
+In terms of technology, the `range_end` field in `RangeRequest` should be `nil` (exact key query); Or
+the query should be like `readdir` operation, since the key format of Apache APISIX is hierarchical,
+the specific id component (`{id}` of `/apisix/routes/{id}`) should exist, for instance, the first following
+`RangeRequest` is valid but the second one isn't.
+
+```json
+{
+  "key": "/apisix/routes",
+  "range_end": "apisix/routet"
+}
+```
+
+```json
+{
+  "key": "/apisix/routes/1",
+  "range_end": "apisix/routes/2"
+}
+```
+
+* Limit the number of key-value pairs to return is not supported yet.
+
+In terms of technology, the `limit` field in `RangeRequest` is ineffective, the implementation always
+returns all key-value pairs.
+
+* Data sorting is not supported yet.
+
+In terms of technology, the `sort_order` and `sort_target` fields in `RangeRequest` are ineffective.
+
+* No serializable and linearizable.
+
+There is no concept of serializable and linearizable, because the solution is not a distributed system.
+In terms of technology, the `serializable` field in `RangeRequest` is ignored.
+
+* Specific revision is not supported yet.
+
+In terms of technology, fields like `revision`, `min_mod_revision`, `max_mod_revision`, `min_create_revision`
+and `max_create_revision` are ineffective.

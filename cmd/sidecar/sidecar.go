@@ -81,5 +81,7 @@ func NewCommand() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&cfg.LogLevel, "log-level", "info", "the error log level")
 	cmd.PersistentFlags().StringVar(&cfg.Provisioner, "provisioner", config.XDSV3FileProvisioner, "the provisioner to use, option can be \"xds-v3-file\"")
 	cmd.PersistentFlags().StringSliceVar(&cfg.XDSWatchFiles, "xds-watch-files", nil, "file paths watched by xds-v3-file provisioner")
+	cmd.PersistentFlags().StringVar(&cfg.GRPCListen, "grpc-listen", config.DefaultGRPCListen, "grpc server listen address")
+	cmd.PersistentFlags().StringVar(&cfg.EtcdKeyPrefix, "etcd-key-prefix", config.DefaultEtcdKeyPrefix, "the key prefix in the mimicking etcd v3 server")
 	return cmd
 }
