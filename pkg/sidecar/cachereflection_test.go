@@ -3,10 +3,9 @@ package sidecar
 import (
 	"testing"
 
-	"github.com/api7/apisix-mesh-agent/pkg/cache"
-
 	"github.com/stretchr/testify/assert"
 
+	"github.com/api7/apisix-mesh-agent/pkg/cache"
 	"github.com/api7/apisix-mesh-agent/pkg/config"
 	"github.com/api7/apisix-mesh-agent/pkg/types"
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
