@@ -4,11 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/api7/apisix-mesh-agent/pkg/id"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/api7/apisix-mesh-agent/pkg/config"
+	"github.com/api7/apisix-mesh-agent/pkg/id"
 )
 
 func TestSidecarRun(t *testing.T) {
