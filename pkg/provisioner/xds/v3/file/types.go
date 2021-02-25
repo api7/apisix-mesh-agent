@@ -1,6 +1,7 @@
 package file
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -38,6 +39,9 @@ type xdsFileProvisioner struct {
 // for more details).
 // Currently only JSON are suppported as the file type and only xDS V3 are supported.
 func NewXDSProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
+	if len(cfg.XDSWatchFiles) == 0 {
+		return nil, errors.New("xds-v3-file provisioner: no watch files")
+	}
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
@@ -68,11 +72,8 @@ func NewXDSProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
 }
 
 func (p *xdsFileProvisioner) Run(stop chan struct{}) error {
-	p.logger.Infow("xds file provisioner started")
-	defer func() {
-		_ = p.logger.Close()
-	}()
-	defer p.logger.Infow("xds file provisioner exited")
+	p.logger.Infow("xds v3 file provisioner started")
+	defer p.logger.Infow("xds v3 file provisioner exited")
 	defer close(p.evChan)
 
 	if err := p.handleInitialFileEvents(); err != nil {

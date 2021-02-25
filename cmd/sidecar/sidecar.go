@@ -12,6 +12,7 @@ import (
 
 	"github.com/api7/apisix-mesh-agent/pkg/config"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
+	"github.com/api7/apisix-mesh-agent/pkg/sidecar"
 	"github.com/api7/apisix-mesh-agent/pkg/version"
 )
 
@@ -60,12 +61,25 @@ func NewCommand() *cobra.Command {
 			}
 			log.Info("use configuration:\n", string(data))
 
+			sc, err := sidecar.NewSidecar(cfg)
+			if err != nil {
+				dief("failed to initialize: %s", err)
+			}
+
 			stop := make(chan struct{})
+			go func() {
+				if err := sc.Run(stop); err != nil {
+					panic(err)
+				}
+			}()
+
 			waitForSignal(stop)
 		},
 	}
 
 	cmd.PersistentFlags().StringVar(&cfg.LogOutput, "log-output", "stderr", "the output file path of error log")
 	cmd.PersistentFlags().StringVar(&cfg.LogLevel, "log-level", "info", "the error log level")
+	cmd.PersistentFlags().StringVar(&cfg.Provisioner, "provisioner", config.XDSV3FileProvisioner, "the provisioner to use, option can be \"xds-v3-file\"")
+	cmd.PersistentFlags().StringSliceVar(&cfg.XDSWatchFiles, "xds-watch-files", nil, "file paths watched by xds-v3-file provisioner")
 	return cmd
 }

@@ -219,10 +219,9 @@ func TestFileProvisionerGenerateEventsFromDiscoveryResponse(t *testing.T) {
 
 func TestFileProvisionerHandleFileEvent(t *testing.T) {
 	cfg := &config.Config{
-		LogLevel:              "debug",
-		LogOutput:             "stderr",
-		UseXDSFileProvisioner: true,
-		XDSWatchFiles:         []string{"./testdata"},
+		LogLevel:      "debug",
+		LogOutput:     "stderr",
+		XDSWatchFiles: []string{"./testdata"},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, err, "creating xds file provisioner")
