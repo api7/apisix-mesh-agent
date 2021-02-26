@@ -13,6 +13,7 @@ import (
 func TestSidecarRun(t *testing.T) {
 	cfg := config.NewDefaultConfig()
 	cfg.XDSWatchFiles = append(cfg.XDSWatchFiles, "testdata/cluster.json")
+	cfg.GRPCListen = "127.0.0.1:10002"
 	s, err := NewSidecar(cfg)
 	assert.Nil(t, err)
 	assert.NotNil(t, s)

@@ -2,6 +2,7 @@ package sidecar
 
 import (
 	"errors"
+	"sync/atomic"
 
 	"go.uber.org/zap"
 
@@ -41,13 +42,13 @@ func (s *Sidecar) reflectToCache(events []types.Event) {
 					zap.Any("route", obj),
 					zap.String("event", string(ev.Type)),
 				)
-				err = s.cache.Route().Delete(obj.GetId().GetStrVal())
+				err = s.cache.Route().Delete(obj.GetId())
 			case *apisix.Upstream:
 				s.logger.Debugw("delete upstream cache",
 					zap.Any("upstream", obj),
 					zap.String("event", string(ev.Type)),
 				)
-				err = s.cache.Upstream().Delete(obj.GetId().GetStrVal())
+				err = s.cache.Upstream().Delete(obj.GetId())
 			default:
 				err = _errUnknownEventObject
 			}
@@ -57,6 +58,12 @@ func (s *Sidecar) reflectToCache(events []types.Event) {
 				zap.Any("event", ev),
 				zap.Error(err),
 			)
+		}
+		for {
+			rev := atomic.LoadInt64(&s.revision)
+			if atomic.CompareAndSwapInt64(&s.revision, rev, rev+1) {
+				break
+			}
 		}
 	}
 }

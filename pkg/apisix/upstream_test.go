@@ -11,19 +11,13 @@ import (
 func TestCompareUpstreams(t *testing.T) {
 	u1 := []*apisix.Upstream{
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "1"},
-			},
+			Id: "1",
 		},
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "2"},
-			},
+			Id: "2",
 		},
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "3"},
-			},
+			Id: "3",
 		},
 	}
 
@@ -39,19 +33,13 @@ func TestCompareUpstreams(t *testing.T) {
 
 	u2 := []*apisix.Upstream{
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "1"},
-			},
+			Id: "1",
 		},
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "4"},
-			},
+			Id: "4",
 		},
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "3"},
-			},
+			Id:      "3",
 			Retries: 3,
 		},
 	}
@@ -59,18 +47,14 @@ func TestCompareUpstreams(t *testing.T) {
 	added, deleted, updated = CompareUpstreams(u1, u2)
 	assert.Equal(t, added, []*apisix.Upstream{
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "4"},
-			},
+			Id: "4",
 		},
 	})
 	assert.Equal(t, deleted, []*apisix.Upstream{
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "2"},
-			},
+			Id: "2",
 		},
 	})
-	assert.Equal(t, updated[0].Id.GetStrVal(), "3")
+	assert.Equal(t, updated[0].Id, "3")
 	assert.Equal(t, updated[0].Retries, int32(3))
 }

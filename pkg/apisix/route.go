@@ -20,18 +20,18 @@ func CompareRoutes(r1, r2 []*apisix.Route) (added, deleted, updated []*apisix.Ro
 	r1Map := make(map[string]*apisix.Route)
 	r2Map := make(map[string]*apisix.Route)
 	for _, r := range r1 {
-		r1Map[r.Id.GetStrVal()] = r
+		r1Map[r.Id] = r
 	}
 	for _, r := range r2 {
-		r2Map[r.Id.GetStrVal()] = r
+		r2Map[r.Id] = r
 	}
 	for _, r := range r2 {
-		if _, ok := r1Map[r.Id.GetStrVal()]; !ok {
+		if _, ok := r1Map[r.Id]; !ok {
 			added = append(added, r)
 		}
 	}
 	for _, ro := range r1 {
-		if rn, ok := r2Map[ro.Id.GetStrVal()]; !ok {
+		if rn, ok := r2Map[ro.Id]; !ok {
 			deleted = append(deleted, ro)
 		} else {
 			if !proto.Equal(ro, rn) {

@@ -47,7 +47,7 @@ func (r *route) Insert(obj *apisix.Route) error {
 	obj = proto.Clone(obj).(*apisix.Route)
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.store[obj.Id.GetStrVal()] = obj
+	r.store[obj.Id] = obj
 	return nil
 }
 

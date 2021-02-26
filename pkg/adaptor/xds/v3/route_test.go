@@ -305,11 +305,7 @@ func TestTranslateVirtualHost(t *testing.T) {
 	assert.Len(t, routes, 1)
 	assert.Equal(t, routes[0].Name, "route1.test.test")
 	assert.Equal(t, routes[0].Status, apisix.Route_Enable)
-	assert.Equal(t, routes[0].Id, &apisix.ID{
-		OneofId: &apisix.ID_StrVal{
-			StrVal: id.GenID(routes[0].Name),
-		},
-	})
+	assert.Equal(t, routes[0].Id, id.GenID(routes[0].Name))
 	assert.Equal(t, routes[0].Hosts, []string{
 		"apisix.apache.org",
 		"*.apache.org",
@@ -317,11 +313,7 @@ func TestTranslateVirtualHost(t *testing.T) {
 	assert.Equal(t, routes[0].Uris, []string{
 		"/foo/baz*",
 	})
-	assert.Equal(t, routes[0].UpstreamId, &apisix.ID{
-		OneofId: &apisix.ID_StrVal{
-			StrVal: id.GenID("kubernetes.default.svc.cluster.local"),
-		},
-	})
+	assert.Equal(t, routes[0].UpstreamId, id.GenID("kubernetes.default.svc.cluster.local"))
 	assert.Equal(t, routes[0].Vars, []*apisix.Var{
 		{
 			Vars: []string{"request_method", "~~", "POST"},

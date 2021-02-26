@@ -74,15 +74,7 @@ func (m *Route) Validate() error {
 		}
 	}
 
-	if v, ok := interface{}(m.GetId()).(interface{ Validate() error }); ok {
-		if err := v.Validate(); err != nil {
-			return RouteValidationError{
-				field:  "Id",
-				reason: "embedded message failed validation",
-				cause:  err,
-			}
-		}
-	}
+	// no validation rules for Id
 
 	if utf8.RuneCountInString(m.GetDesc()) > 256 {
 		return RouteValidationError{
@@ -195,25 +187,9 @@ func (m *Route) Validate() error {
 		}
 	}
 
-	if v, ok := interface{}(m.GetServiceId()).(interface{ Validate() error }); ok {
-		if err := v.Validate(); err != nil {
-			return RouteValidationError{
-				field:  "ServiceId",
-				reason: "embedded message failed validation",
-				cause:  err,
-			}
-		}
-	}
+	// no validation rules for ServiceId
 
-	if v, ok := interface{}(m.GetUpstreamId()).(interface{ Validate() error }); ok {
-		if err := v.Validate(); err != nil {
-			return RouteValidationError{
-				field:  "UpstreamId",
-				reason: "embedded message failed validation",
-				cause:  err,
-			}
-		}
-	}
+	// no validation rules for UpstreamId
 
 	// no validation rules for Status
 

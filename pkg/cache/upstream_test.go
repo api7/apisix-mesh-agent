@@ -20,24 +20,20 @@ func TestUpstream(t *testing.T) {
 	assert.Equal(t, u.Delete("1"), ErrObjectNotFound)
 
 	ups1 := &apisix.Upstream{
-		Id: &apisix.ID{
-			OneofId: &apisix.ID_StrVal{
-				StrVal: "1",
-			},
-		},
+		Id: "1",
 	}
 	assert.Nil(t, u.Insert(ups1))
 
 	obj, err = u.Get("1")
 	assert.Nil(t, err)
-	assert.Equal(t, obj.Id.GetStrVal(), "1")
+	assert.Equal(t, obj.Id, "1")
 
 	// Update
 	obj.Name = "Vivian"
 	assert.Nil(t, u.Insert(obj))
 	obj, err = u.Get("1")
 	assert.Nil(t, err)
-	assert.Equal(t, obj.Id.GetStrVal(), "1")
+	assert.Equal(t, obj.Id, "1")
 	assert.Equal(t, obj.GetName(), "Vivian")
 
 	// Delete
@@ -51,25 +47,13 @@ func TestUpstream(t *testing.T) {
 func TestUpstreamList(t *testing.T) {
 	objs := []*apisix.Upstream{
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{
-					StrVal: "1",
-				},
-			},
+			Id: "1",
 		},
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{
-					StrVal: "2",
-				},
-			},
+			Id: "2",
 		},
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{
-					StrVal: "3",
-				},
-			},
+			Id: "3",
 		},
 	}
 	u := newUpstream()
@@ -83,7 +67,7 @@ func TestUpstreamList(t *testing.T) {
 
 	var ids []string
 	for _, elem := range list {
-		ids = append(ids, elem.GetId().GetStrVal())
+		ids = append(ids, elem.GetId())
 	}
 	sort.Strings(ids)
 	assert.Equal(t, ids[0], "1")
@@ -93,11 +77,7 @@ func TestUpstreamList(t *testing.T) {
 
 func TestUpstreamObjectClone(t *testing.T) {
 	ups1 := &apisix.Upstream{
-		Id: &apisix.ID{
-			OneofId: &apisix.ID_StrVal{
-				StrVal: "1",
-			},
-		},
+		Id: "1",
 	}
 	u := newUpstream()
 	assert.NotNil(t, u)

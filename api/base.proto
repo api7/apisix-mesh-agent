@@ -4,14 +4,6 @@ option go_package = ".;apisix";
 
 import "validate/validate.proto";
 
-// ID used to identify resources like Route, Upstream.
-message ID {
-  oneof oneof_id {
-    int64 int_val = 1 [(validate.rules).int64.gte = 1];
-    string str_val = 2 [(validate.rules).string = {min_len: 1, max_len: 64, pattern: "^[a-zA-Z0-9-_.]+$"}];
-  };
-}
-
 // Var represents the expression like:
 // ["arg_id", "equal", "543"].
 message Var {
