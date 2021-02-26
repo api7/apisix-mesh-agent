@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"google.golang.org/protobuf/encoding/protojson"
+
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/api7/apisix-mesh-agent/pkg/cache"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
@@ -83,13 +84,9 @@ func TestFindExactKey(t *testing.T) {
 	assert.Equal(t, err, rpctypes.ErrKeyNotFound)
 
 	route := &apisix.Route{
-		Uris: []string{"/foo*"},
-		Name: "route1",
-		Id: &apisix.ID{
-			OneofId: &apisix.ID_StrVal{
-				StrVal: "0123",
-			},
-		},
+		Uris:   []string{"/foo*"},
+		Name:   "route1",
+		Id:     "0123",
 		Status: 1,
 	}
 	assert.Nil(t, e.cache.Route().Insert(route))
@@ -102,10 +99,10 @@ func TestFindExactKey(t *testing.T) {
 	assert.Equal(t, resp.Kvs[0].CreateRevision, int64(3))
 	assert.Equal(t, resp.Kvs[0].Key, []byte("/apisix/routes/0123"))
 	var route2 apisix.Route
-	assert.Nil(t, proto.Unmarshal(resp.Kvs[0].Value, &route2))
+	assert.Nil(t, protojson.Unmarshal(resp.Kvs[0].Value, &route2))
 	assert.Equal(t, route.Uris, route2.Uris)
 	assert.Equal(t, route.Name, route2.Name)
-	assert.Equal(t, route.Id.GetStrVal(), route2.Id.GetStrVal())
+	assert.Equal(t, route.Id, route2.Id)
 
 	resp, err = e.findExactKey([]byte("/apisix/upstreams/00003"))
 	assert.Nil(t, resp, nil)
@@ -113,11 +110,7 @@ func TestFindExactKey(t *testing.T) {
 
 	ups := &apisix.Upstream{
 		Name: "ups1",
-		Id: &apisix.ID{
-			OneofId: &apisix.ID_StrVal{
-				StrVal: "00003",
-			},
-		},
+		Id:   "00003",
 		Timeout: &apisix.Upstream_Timeout{
 			Connect: 5,
 			Send:    5,
@@ -136,10 +129,12 @@ func TestFindExactKey(t *testing.T) {
 	assert.Equal(t, resp.Kvs[0].Key, []byte("/apisix/upstreams/00003"))
 
 	var ups2 apisix.Upstream
-	assert.Nil(t, proto.Unmarshal(resp.Kvs[0].Value, &ups2))
+	assert.Nil(t, protojson.Unmarshal(resp.Kvs[0].Value, &ups2))
 	assert.Equal(t, ups.Name, ups2.Name)
-	assert.Equal(t, ups.Id.GetStrVal(), ups2.Id.GetStrVal())
-	assert.Equal(t, ups.Timeout, ups2.Timeout)
+	assert.Equal(t, ups.Id, ups2.Id)
+	assert.Equal(t, ups.Timeout.Connect, ups2.Timeout.Connect)
+	assert.Equal(t, ups.Timeout.Send, ups2.Timeout.Send)
+	assert.Equal(t, ups.Timeout.Read, ups2.Timeout.Read)
 }
 
 func TestFindAllKeys(t *testing.T) {
@@ -170,19 +165,11 @@ func TestFindAllKeys(t *testing.T) {
 
 	r1 := &apisix.Route{
 		Name: "/apisix/routes/1",
-		Id: &apisix.ID{
-			OneofId: &apisix.ID_StrVal{
-				StrVal: "1",
-			},
-		},
+		Id:   "1",
 	}
 	r2 := &apisix.Route{
 		Name: "/apisix/routes/2",
-		Id: &apisix.ID{
-			OneofId: &apisix.ID_StrVal{
-				StrVal: "2",
-			},
-		},
+		Id:   "2",
 	}
 	assert.Nil(t, e.cache.Route().Insert(r1))
 	assert.Nil(t, e.cache.Route().Insert(r2))
@@ -196,11 +183,7 @@ func TestFindAllKeys(t *testing.T) {
 
 	u1 := &apisix.Upstream{
 		Name: "/apisix/upstreams/1",
-		Id: &apisix.ID{
-			OneofId: &apisix.ID_StrVal{
-				StrVal: "1",
-			},
-		},
+		Id:   "1",
 	}
 	fr.rev++
 	assert.Nil(t, e.cache.Upstream().Insert(u1))
@@ -226,23 +209,16 @@ func TestRangeRequest(t *testing.T) {
 		RangeEnd: nil,
 	}
 	resp, err := e.Range(context.Background(), rr)
-	assert.Nil(t, resp)
-	assert.Equal(t, err, rpctypes.ErrKeyNotFound)
+	assert.NotNil(t, resp)
+	assert.Nil(t, err)
+	assert.Len(t, resp.Kvs, 0)
 	r1 := &apisix.Route{
 		Name: "/apisix/routes/1",
-		Id: &apisix.ID{
-			OneofId: &apisix.ID_StrVal{
-				StrVal: "1",
-			},
-		},
+		Id:   "1",
 	}
 	r2 := &apisix.Route{
 		Name: "/apisix/routes/2",
-		Id: &apisix.ID{
-			OneofId: &apisix.ID_StrVal{
-				StrVal: "2",
-			},
-		},
+		Id:   "2",
 	}
 	assert.Nil(t, e.cache.Route().Insert(r1))
 	assert.Nil(t, e.cache.Route().Insert(r2))
@@ -256,8 +232,13 @@ func TestRangeRequest(t *testing.T) {
 	rr.RangeEnd = []byte("/apisix/routet")
 	resp, err = e.Range(context.Background(), rr)
 	assert.Len(t, resp.Kvs, 2)
-	assert.Equal(t, resp.Kvs[0].Key, []byte("/apisix/routes/1"))
-	assert.Equal(t, resp.Kvs[1].Key, []byte("/apisix/routes/2"))
+	key1 := string(resp.Kvs[0].Key)
+	key2 := string(resp.Kvs[1].Key)
+	if key1 > key2 {
+		key1, key2 = key2, key1
+	}
+	assert.Equal(t, key1, "/apisix/routes/1")
+	assert.Equal(t, key2, "/apisix/routes/2")
 	assert.Nil(t, err)
 
 }

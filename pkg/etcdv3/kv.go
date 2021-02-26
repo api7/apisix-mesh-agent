@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/api7/apisix-mesh-agent/pkg/cache"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -16,7 +16,8 @@ import (
 )
 
 var (
-	_errInternalError = status.New(codes.Internal, "internal error").Err()
+	_errInternalError   = status.New(codes.Internal, "internal error").Err()
+	_emptyRangeResponse = &etcdserverpb.RangeResponse{}
 )
 
 // Range implements etcdserverpb.KVServer.Range method.
@@ -37,7 +38,10 @@ func (e *etcdV3) Range(ctx context.Context, r *etcdserverpb.RangeRequest) (*etcd
 		resp, err = e.findAllKeys(r.Key)
 	}
 	if err != nil {
-		return nil, err
+		if err != rpctypes.ErrKeyNotFound {
+			return nil, err
+		}
+		return _emptyRangeResponse, nil
 	}
 	if r.KeysOnly {
 		for _, kv := range resp.Kvs {
@@ -118,7 +122,7 @@ func (e *etcdV3) findExactKey(key []byte) (*etcdserverpb.RangeResponse, error) {
 			}
 			return nil, _errInternalError
 		}
-		value, err = proto.Marshal(route)
+		value, err = protojson.Marshal(route)
 		if err != nil {
 			e.logger.Errorw("failed to marshal route",
 				zap.Any("route", route),
@@ -137,7 +141,7 @@ func (e *etcdV3) findExactKey(key []byte) (*etcdserverpb.RangeResponse, error) {
 			}
 			return nil, _errInternalError
 		}
-		value, err = proto.Marshal(ups)
+		value, err = protojson.Marshal(ups)
 		if err != nil {
 			e.logger.Errorw("failed to marshal upstream",
 				zap.Any("upstream", ups),
@@ -181,8 +185,8 @@ func (e *etcdV3) findAllKeys(key []byte) (*etcdserverpb.RangeResponse, error) {
 			return nil, _errInternalError
 		}
 		for _, r := range routes {
-			itemKey := e.keyPrefix + "/routes/" + r.Id.GetStrVal()
-			value, err := proto.Marshal(r)
+			itemKey := e.keyPrefix + "/routes/" + r.Id
+			value, err := protojson.Marshal(r)
 			if err != nil {
 				e.logger.Errorw("failed to marshal route",
 					zap.Error(err),
@@ -201,8 +205,8 @@ func (e *etcdV3) findAllKeys(key []byte) (*etcdserverpb.RangeResponse, error) {
 			return nil, _errInternalError
 		}
 		for _, u := range upstreams {
-			itemKey := e.keyPrefix + "/upstreams/" + u.Id.GetStrVal()
-			value, err := proto.Marshal(u)
+			itemKey := e.keyPrefix + "/upstreams/" + u.Id
+			value, err := protojson.Marshal(u)
 			if err != nil {
 				e.logger.Errorw("failed to marshal upstream",
 					zap.Error(err),

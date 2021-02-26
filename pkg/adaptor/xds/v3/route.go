@@ -70,21 +70,13 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 		vars = append(vars, queryVars...)
 		name = fmt.Sprintf("%s.%s.%s", name, vhost.GetName(), prefix)
 		r := &apisix.Route{
-			Name:   name,
-			Status: 1,
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{
-					StrVal: id.GenID(name),
-				},
-			},
-			Hosts: vhost.Domains,
-			Uris:  []string{uri},
-			UpstreamId: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{
-					StrVal: id.GenID(cluster),
-				},
-			},
-			Vars: vars,
+			Name:       name,
+			Status:     1,
+			Id:         id.GenID(name),
+			Hosts:      vhost.Domains,
+			Uris:       []string{uri},
+			UpstreamId: id.GenID(cluster),
+			Vars:       vars,
 		}
 		routes = append(routes, r)
 	}

@@ -42,13 +42,13 @@ func (s *Sidecar) reflectToCache(events []types.Event) {
 					zap.Any("route", obj),
 					zap.String("event", string(ev.Type)),
 				)
-				err = s.cache.Route().Delete(obj.GetId().GetStrVal())
+				err = s.cache.Route().Delete(obj.GetId())
 			case *apisix.Upstream:
 				s.logger.Debugw("delete upstream cache",
 					zap.Any("upstream", obj),
 					zap.String("event", string(ev.Type)),
 				)
-				err = s.cache.Upstream().Delete(obj.GetId().GetStrVal())
+				err = s.cache.Upstream().Delete(obj.GetId())
 			default:
 				err = _errUnknownEventObject
 			}

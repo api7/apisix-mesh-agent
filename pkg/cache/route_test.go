@@ -20,24 +20,20 @@ func TestRoute(t *testing.T) {
 	assert.Equal(t, r.Delete("1"), ErrObjectNotFound)
 
 	route1 := &apisix.Route{
-		Id: &apisix.ID{
-			OneofId: &apisix.ID_StrVal{
-				StrVal: "1",
-			},
-		},
+		Id: "1",
 	}
 	assert.Nil(t, r.Insert(route1))
 
 	obj, err = r.Get("1")
 	assert.Nil(t, err)
-	assert.Equal(t, obj.Id.GetStrVal(), "1")
+	assert.Equal(t, obj.Id, "1")
 
 	// Update
 	obj.Name = "Vivian"
 	assert.Nil(t, r.Insert(obj))
 	obj, err = r.Get("1")
 	assert.Nil(t, err)
-	assert.Equal(t, obj.Id.GetStrVal(), "1")
+	assert.Equal(t, obj.Id, "1")
 	assert.Equal(t, obj.GetName(), "Vivian")
 
 	// Delete
@@ -51,25 +47,13 @@ func TestRoute(t *testing.T) {
 func TestRouteList(t *testing.T) {
 	objs := []*apisix.Route{
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{
-					StrVal: "1",
-				},
-			},
+			Id: "1",
 		},
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{
-					StrVal: "2",
-				},
-			},
+			Id: "2",
 		},
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{
-					StrVal: "3",
-				},
-			},
+			Id: "3",
 		},
 	}
 	r := newRoute()
@@ -83,7 +67,7 @@ func TestRouteList(t *testing.T) {
 
 	var ids []string
 	for _, elem := range list {
-		ids = append(ids, elem.GetId().GetStrVal())
+		ids = append(ids, elem.GetId())
 	}
 	sort.Strings(ids)
 	assert.Equal(t, ids[0], "1")
@@ -93,11 +77,7 @@ func TestRouteList(t *testing.T) {
 
 func TestRouteObjectClone(t *testing.T) {
 	route1 := &apisix.Route{
-		Id: &apisix.ID{
-			OneofId: &apisix.ID_StrVal{
-				StrVal: "1",
-			},
-		},
+		Id: "1",
 	}
 	r := newRoute()
 	assert.NotNil(t, r)

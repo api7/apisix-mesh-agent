@@ -27,7 +27,7 @@ message Route {
   // The route name, it's useful for the logging but it's not required.
   string name = 2 [(validate.rules).string = {min_len: 1, max_len: 100}];
   // The route id, can be an int64 value or a string matching the specific pattern.
-  ID id = 3;
+  string id = 3;
   // Textual descriptions used to describe the route use.
   string desc = 4 [(validate.rules).string.max_len = 256];
   // Priority of this route, used to decide which route should be used when
@@ -63,9 +63,9 @@ message Route {
   // Embedded plugins.
   google.protobuf.Any plugins = 10;
   // The referred service id.
-  ID service_id = 11;
+  string service_id = 11;
   // The referred upstream id.
-  ID upstream_id = 12;
+  string upstream_id = 12;
 
   // RouteStatus Enumerations.
   enum RouteStatus {

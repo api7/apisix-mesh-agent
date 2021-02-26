@@ -121,15 +121,7 @@ func (m *Upstream) Validate() error {
 		}
 	}
 
-	if v, ok := interface{}(m.GetId()).(interface{ Validate() error }); ok {
-		if err := v.Validate(); err != nil {
-			return UpstreamValidationError{
-				field:  "Id",
-				reason: "embedded message failed validation",
-				cause:  err,
-			}
-		}
-	}
+	// no validation rules for Id
 
 	if v, ok := interface{}(m.GetChecks()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {

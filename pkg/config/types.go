@@ -18,7 +18,7 @@ var (
 	ErrBadGRPCListen = errors.New("bad grpc listen address")
 
 	// DefaultGRPCListen is the default gRPC server listen address.
-	DefaultGRPCListen = "127.0.0.1:13133"
+	DefaultGRPCListen = "127.0.0.1:2379"
 	// DefaultEtcdKeyPrefix is the default key prefix in the mimicking
 	// etcd v3 server.
 	DefaultEtcdKeyPrefix = "/apisix"

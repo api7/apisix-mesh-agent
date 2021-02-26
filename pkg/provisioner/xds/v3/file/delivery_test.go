@@ -142,7 +142,7 @@ func TestProcessClusterV3(t *testing.T) {
 	upstreams := p.processClusterV3(&opaque)
 	assert.Len(t, upstreams, 1)
 	assert.Equal(t, upstreams[0].Name, "httpbin.default.svc.cluster.local")
-	assert.Equal(t, upstreams[0].Id.GetStrVal(), id.GenID(upstreams[0].Name))
+	assert.Equal(t, upstreams[0].Id, id.GenID(upstreams[0].Name))
 	assert.Len(t, upstreams[0].Nodes, 2)
 	assert.Equal(t, upstreams[0].Nodes[0].Host, "10.0.3.11")
 	assert.Equal(t, upstreams[0].Nodes[0].Port, int32(8000))

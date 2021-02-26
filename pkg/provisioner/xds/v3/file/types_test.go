@@ -35,18 +35,10 @@ func TestFileProvisionerGenerateEvents(t *testing.T) {
 	rm := &manifest{
 		Routes: []*apisix.Route{
 			{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{
-						StrVal: "1",
-					},
-				},
+				Id: "1",
 			},
 			{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{
-						StrVal: "2",
-					},
-				},
+				Id: "2",
 			},
 		},
 	}
@@ -70,19 +62,11 @@ func TestFileProvisionerGenerateEvents(t *testing.T) {
 	rmo := &manifest{
 		Routes: []*apisix.Route{
 			{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{
-						StrVal: "1",
-					},
-				},
+				Id:   "1",
 				Name: "old town",
 			},
 			{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{
-						StrVal: "3",
-					},
-				},
+				Id: "3",
 			},
 		},
 	}
@@ -246,7 +230,7 @@ func TestFileProvisionerHandleFileEvent(t *testing.T) {
 	case *apisix.Route:
 		assert.Equal(t, obj.Uris[0], "/foo")
 		assert.Equal(t, obj.Name, "route1.vhost1.rc1")
-		assert.Equal(t, obj.UpstreamId.GetStrVal(), id.GenID("kubernetes.default.svc.cluster.local"))
+		assert.Equal(t, obj.UpstreamId, id.GenID("kubernetes.default.svc.cluster.local"))
 		assert.Equal(t, obj.Status, apisix.Route_Enable)
 	case *apisix.Upstream:
 		assert.Len(t, obj.Nodes, 0)
@@ -267,7 +251,7 @@ func TestFileProvisionerHandleFileEvent(t *testing.T) {
 	case *apisix.Route:
 		assert.Equal(t, obj.Uris[0], "/foo")
 		assert.Equal(t, obj.Name, "route1.vhost1.rc1")
-		assert.Equal(t, obj.UpstreamId.GetStrVal(), id.GenID("kubernetes.default.svc.cluster.local"))
+		assert.Equal(t, obj.UpstreamId, id.GenID("kubernetes.default.svc.cluster.local"))
 		assert.Equal(t, obj.Status, apisix.Route_Enable)
 	case *apisix.Upstream:
 		assert.Len(t, obj.Nodes, 0)

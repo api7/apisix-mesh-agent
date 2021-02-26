@@ -14,6 +14,7 @@ import (
 func TestReflectToCache(t *testing.T) {
 	cfg := config.NewDefaultConfig()
 	cfg.XDSWatchFiles = append(cfg.XDSWatchFiles, "/tmp")
+	cfg.GRPCListen = "127.0.0.1:10001"
 	s, err := NewSidecar(cfg)
 	assert.Nil(t, err)
 	assert.NotNil(t, s)
@@ -22,45 +23,29 @@ func TestReflectToCache(t *testing.T) {
 		{
 			Type: types.EventAdd,
 			Object: &apisix.Route{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{
-						StrVal: "1",
-					},
-				},
+				Id: "1",
 			},
 		},
 		{
 			Type: types.EventAdd,
 			Object: &apisix.Route{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{
-						StrVal: "2",
-					},
-				},
+				Id: "2",
 			},
 		},
 		{
 			Type: types.EventUpdate,
 			Object: &apisix.Upstream{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{
-						StrVal: "133",
-					},
-				},
+				Id: "133",
 			},
 		},
 		{
 			Type: types.EventDelete,
 			Tombstone: &apisix.Upstream{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{
-						StrVal: "21",
-					},
-				},
+				Id: "21",
 			},
 		},
 	}
-	err = s.cache.Upstream().Insert(&apisix.Upstream{Id: &apisix.ID{OneofId: &apisix.ID_StrVal{StrVal: "21"}}})
+	err = s.cache.Upstream().Insert(&apisix.Upstream{Id: "21"})
 	assert.Nil(t, err)
 	s.reflectToCache(events)
 	r1, err := s.cache.Route().Get("1")

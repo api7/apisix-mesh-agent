@@ -13,18 +13,10 @@ func TestInMemoryCache(t *testing.T) {
 	assert.NotNil(t, c)
 
 	ups := &apisix.Upstream{
-		Id: &apisix.ID{
-			OneofId: &apisix.ID_StrVal{
-				StrVal: "1",
-			},
-		},
+		Id: "1",
 	}
 	r := &apisix.Route{
-		Id: &apisix.ID{
-			OneofId: &apisix.ID_StrVal{
-				StrVal: "1",
-			},
-		},
+		Id: "1",
 	}
 
 	assert.Nil(t, c.Route().Insert(r))
@@ -32,9 +24,9 @@ func TestInMemoryCache(t *testing.T) {
 
 	rr, err := c.Route().Get("1")
 	assert.Nil(t, err)
-	assert.Equal(t, rr.GetId().GetStrVal(), "1")
+	assert.Equal(t, rr.GetId(), "1")
 
 	uu, err := c.Upstream().Get("1")
 	assert.Nil(t, err)
-	assert.Equal(t, uu.GetId().GetStrVal(), "1")
+	assert.Equal(t, uu.GetId(), "1")
 }

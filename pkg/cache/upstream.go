@@ -47,7 +47,7 @@ func (r *upstream) Insert(obj *apisix.Upstream) error {
 	obj = proto.Clone(obj).(*apisix.Upstream)
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.store[obj.Id.GetStrVal()] = obj
+	r.store[obj.Id] = obj
 	return nil
 }
 

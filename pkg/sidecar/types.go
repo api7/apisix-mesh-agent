@@ -67,7 +67,15 @@ func (s *Sidecar) Run(stop chan struct{}) error {
 
 	go func() {
 		if err := s.provisioner.Run(stop); err != nil {
-			s.logger.Errorw("provisioner run failed",
+			s.logger.Fatalw("provisioner run failed",
+				zap.Error(err),
+			)
+		}
+	}()
+
+	go func() {
+		if err := s.etcdSrv.Serve(s.grpcListener); err != nil {
+			s.logger.Fatalw("etcd v3 server run failed",
 				zap.Error(err),
 			)
 		}

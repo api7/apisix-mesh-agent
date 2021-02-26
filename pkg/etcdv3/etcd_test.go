@@ -7,8 +7,6 @@ import (
 
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"golang.org/x/net/nettest"
@@ -60,16 +58,11 @@ func TestEtcdV3ServerRun(t *testing.T) {
 		Key: []byte("/apisix/routes/1"),
 	}
 	resp, err := client.Range(context.Background(), rr)
-	assert.Nil(t, resp)
-	// err.Error() also has the code information.
-	assert.Contains(t, err.Error(), rpctypes.ErrKeyNotFound.Error())
+	assert.Nil(t, err)
+	assert.Len(t, resp.Kvs, 0)
 
 	u := &apisix.Upstream{
-		Id: &apisix.ID{
-			OneofId: &apisix.ID_StrVal{
-				StrVal: "1",
-			},
-		},
+		Id: "1",
 	}
 	assert.Nil(t, c.Upstream().Insert(u))
 

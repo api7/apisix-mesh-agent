@@ -2,7 +2,6 @@ syntax = "proto3";
 
 option go_package = ".;apisix";
 
-import "base.proto";
 import "validate/validate.proto";
 import "google/protobuf/any.proto";
 
@@ -58,7 +57,7 @@ message Upstream {
   // Textual descriptions used to describe the upstream use.
   string desc = 11 [(validate.rules).string.max_len = 256];
   // The upstream id.
-  ID id = 12;
+  string id = 12;
   // Health check settings.
   HealthCheck checks = 13;
   // Upstream nodes.

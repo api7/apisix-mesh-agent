@@ -53,60 +53,46 @@ func TestManifestDiffFrom(t *testing.T) {
 	m := &manifest{
 		Routes: []*apisix.Route{
 			{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{StrVal: "1"},
-				},
+				Id: "1",
 			},
 			{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{StrVal: "2"},
-				},
+				Id: "2",
 			},
 		},
 		Upstreams: []*apisix.Upstream{
 			{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{StrVal: "1"},
-				},
+				Id: "1",
 			},
 			{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{StrVal: "2"},
-				},
+				Id: "2",
 			},
 		},
 	}
 	m2 := &manifest{
 		Routes: []*apisix.Route{
 			{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{StrVal: "2"},
-				},
+				Id:   "2",
 				Uris: []string{"/foo"},
 			},
 			{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{StrVal: "3"},
-				},
+				Id: "3",
 			},
 		},
 		Upstreams: []*apisix.Upstream{
 			{
-				Id: &apisix.ID{
-					OneofId: &apisix.ID_StrVal{StrVal: "1"},
-				},
+				Id: "1",
 			},
 		},
 	}
 	a, d, u := m.diffFrom(m2)
 	assert.Equal(t, a.size(), 1)
-	assert.Equal(t, a.Routes[0].Id.GetStrVal(), "3")
+	assert.Equal(t, a.Routes[0].Id, "3")
 
 	assert.Equal(t, d.size(), 2)
-	assert.Equal(t, d.Routes[0].Id.GetStrVal(), "1")
-	assert.Equal(t, d.Upstreams[0].Id.GetStrVal(), "2")
+	assert.Equal(t, d.Routes[0].Id, "1")
+	assert.Equal(t, d.Upstreams[0].Id, "2")
 
 	assert.Equal(t, u.size(), 1)
-	assert.Equal(t, u.Routes[0].Id.GetStrVal(), "2")
+	assert.Equal(t, u.Routes[0].Id, "2")
 	assert.Equal(t, u.Routes[0].Uris, []string{"/foo"})
 }

@@ -11,19 +11,13 @@ import (
 func TestCompareRoutes(t *testing.T) {
 	r1 := []*apisix.Route{
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "1"},
-			},
+			Id: "1",
 		},
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "2"},
-			},
+			Id: "2",
 		},
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "3"},
-			},
+			Id: "3",
 		},
 	}
 
@@ -39,19 +33,13 @@ func TestCompareRoutes(t *testing.T) {
 
 	r2 := []*apisix.Route{
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "1"},
-			},
+			Id: "1",
 		},
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "4"},
-			},
+			Id: "4",
 		},
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "3"},
-			},
+			Id:   "3",
 			Uris: []string{"/foo*"},
 		},
 	}
@@ -59,18 +47,14 @@ func TestCompareRoutes(t *testing.T) {
 	added, deleted, updated = CompareRoutes(r1, r2)
 	assert.Equal(t, added, []*apisix.Route{
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "4"},
-			},
+			Id: "4",
 		},
 	})
 	assert.Equal(t, deleted, []*apisix.Route{
 		{
-			Id: &apisix.ID{
-				OneofId: &apisix.ID_StrVal{StrVal: "2"},
-			},
+			Id: "2",
 		},
 	})
-	assert.Equal(t, updated[0].Id.GetStrVal(), "3")
+	assert.Equal(t, updated[0].Id, "3")
 	assert.Equal(t, updated[0].Uris, []string{"/foo*"})
 }
