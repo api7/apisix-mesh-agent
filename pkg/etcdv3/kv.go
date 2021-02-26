@@ -18,6 +18,10 @@ import (
 var (
 	_errInternalError   = status.New(codes.Internal, "internal error").Err()
 	_emptyRangeResponse = &etcdserverpb.RangeResponse{}
+
+	_pbjsonMarshalOpts = &protojson.MarshalOptions{
+		UseEnumNumbers: true,
+	}
 )
 
 // Range implements etcdserverpb.KVServer.Range method.
@@ -122,7 +126,7 @@ func (e *etcdV3) findExactKey(key []byte) (*etcdserverpb.RangeResponse, error) {
 			}
 			return nil, _errInternalError
 		}
-		value, err = protojson.Marshal(route)
+		value, err = _pbjsonMarshalOpts.Marshal(route)
 		if err != nil {
 			e.logger.Errorw("failed to marshal route",
 				zap.Any("route", route),
@@ -141,7 +145,7 @@ func (e *etcdV3) findExactKey(key []byte) (*etcdserverpb.RangeResponse, error) {
 			}
 			return nil, _errInternalError
 		}
-		value, err = protojson.Marshal(ups)
+		value, err = _pbjsonMarshalOpts.Marshal(ups)
 		if err != nil {
 			e.logger.Errorw("failed to marshal upstream",
 				zap.Any("upstream", ups),
@@ -186,7 +190,7 @@ func (e *etcdV3) findAllKeys(key []byte) (*etcdserverpb.RangeResponse, error) {
 		}
 		for _, r := range routes {
 			itemKey := e.keyPrefix + "/routes/" + r.Id
-			value, err := protojson.Marshal(r)
+			value, err := _pbjsonMarshalOpts.Marshal(r)
 			if err != nil {
 				e.logger.Errorw("failed to marshal route",
 					zap.Error(err),
@@ -206,7 +210,7 @@ func (e *etcdV3) findAllKeys(key []byte) (*etcdserverpb.RangeResponse, error) {
 		}
 		for _, u := range upstreams {
 			itemKey := e.keyPrefix + "/upstreams/" + u.Id
-			value, err := protojson.Marshal(u)
+			value, err := _pbjsonMarshalOpts.Marshal(u)
 			if err != nil {
 				e.logger.Errorw("failed to marshal upstream",
 					zap.Error(err),
