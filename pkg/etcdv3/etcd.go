@@ -58,6 +58,7 @@ func NewEtcdV3Server(cfg *config.Config, cache cache.Cache, revisioner Revisione
 		revisioner: revisioner,
 		cache:      cache,
 		logger:     logger,
+		keyPrefix:  cfg.EtcdKeyPrefix,
 		metaCache:  make(map[string]meta),
 	}, nil
 }

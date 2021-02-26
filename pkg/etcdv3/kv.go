@@ -44,7 +44,10 @@ func (e *etcdV3) Range(ctx context.Context, r *etcdserverpb.RangeRequest) (*etcd
 			kv.Value = nil
 		}
 	}
-	return nil, nil
+	e.logger.Debugw("RangeRequest response",
+		zap.Any("response", resp),
+	)
+	return resp, nil
 }
 
 // Put implements etcdserverpb.KVServer.Put method.
@@ -91,19 +94,24 @@ func (e *etcdV3) composeKeyValue(key []byte, value []byte) *mvccpb.KeyValue {
 }
 
 func (e *etcdV3) findExactKey(key []byte) (*etcdserverpb.RangeResponse, error) {
-	parts := strings.Split(string(key), "/")
-	if len(parts) != 4 || parts[0] != "" || parts[1] != e.keyPrefix {
+	tempKey := string(key)
+	if !strings.HasPrefix(tempKey, e.keyPrefix) {
+		return nil, rpctypes.ErrKeyNotFound
+	}
+	tempKey = strings.TrimPrefix(tempKey, e.keyPrefix)
+	parts := strings.Split(tempKey, "/")
+	if len(parts) != 3 || parts[0] != "" {
 		return nil, rpctypes.ErrKeyNotFound
 	}
 	var (
 		value []byte
 	)
-	switch parts[2] {
+	switch parts[1] {
 	case "routes":
 		e.logger.Debugw("request for route",
-			zap.String("route_id", parts[3]),
+			zap.String("route_id", parts[2]),
 		)
-		route, err := e.cache.Route().Get(parts[3])
+		route, err := e.cache.Route().Get(parts[2])
 		if err != nil {
 			if err == cache.ErrObjectNotFound {
 				return nil, rpctypes.ErrKeyNotFound
@@ -120,9 +128,9 @@ func (e *etcdV3) findExactKey(key []byte) (*etcdserverpb.RangeResponse, error) {
 		}
 	case "upstreams":
 		e.logger.Debugw("request for upstream",
-			zap.String("upstream_id", parts[3]),
+			zap.String("upstream_id", parts[2]),
 		)
-		ups, err := e.cache.Upstream().Get(parts[3])
+		ups, err := e.cache.Upstream().Get(parts[2])
 		if err != nil {
 			if err == cache.ErrObjectNotFound {
 				return nil, rpctypes.ErrKeyNotFound
@@ -153,12 +161,17 @@ func (e *etcdV3) findExactKey(key []byte) (*etcdserverpb.RangeResponse, error) {
 }
 
 func (e *etcdV3) findAllKeys(key []byte) (*etcdserverpb.RangeResponse, error) {
-	parts := strings.Split(string(key), "/")
-	if len(parts) != 3 || parts[0] != "" || parts[1] != e.keyPrefix {
+	tempKey := string(key)
+	if !strings.HasPrefix(tempKey, e.keyPrefix) {
+		return nil, rpctypes.ErrKeyNotFound
+	}
+	tempKey = strings.TrimPrefix(tempKey, e.keyPrefix)
+	parts := strings.Split(tempKey, "/")
+	if len(parts) != 2 || parts[0] != "" {
 		return nil, rpctypes.ErrKeyNotFound
 	}
 	var kvs []*mvccpb.KeyValue
-	switch parts[2] {
+	switch parts[1] {
 	case "routes":
 		routes, err := e.cache.Route().List()
 		if err != nil {
