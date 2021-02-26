@@ -12,7 +12,7 @@ Note this it not a generic implementation for ETCD v3 API, it's specific for [Ap
 - [Data Source](#data-source)
 - [Key Value Metadata](#key-value-metadata)
 - [API Conformance](#api-conformance)
-    - [RangeRequest](#rangerequest)
+  - [RangeRequest](#rangerequest)
 
 ## Why
 
