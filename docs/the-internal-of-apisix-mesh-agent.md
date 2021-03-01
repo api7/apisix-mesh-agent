@@ -8,11 +8,14 @@ This article explains the internal design of apisix-mesh-agent.
 - [Provisioner](#provisioner)
 - [Adaptor](#adaptor)
 - [Cache](#cache)
+- [Etcd V3](#etcd-v3)
 
 ## Overview
 
 The apisix-mesh-agent is modular, each modular exposes interfaces to let others invoke it.
-Now it has three modules: [Provisioner](#provisioner), [Adaptor](#adaptor), [Cache](#cache). The dependency relationships between them are depicted by the following illustration.
+Now it has four modules: [Provisioner](#provisioner), [Adaptor](#adaptor), [Cache](#cache), [Etcd V3](#etcd-v3). The dependency relationships between them are depicted by the following illustration.
+
+![the-internal-of-mesh-agent](./images/the-internal-of-apisix-mesh-agent.png)
 
 ## Provisioner
 
@@ -127,3 +130,7 @@ type Upstream interface {
 ```
 
 Data in Cache are used for the Etcd module.
+
+## Etcd V3
+
+The Etcd V3 module implements part of [Etcd V3 API](https://etcd.io/docs/current/learning/api/), It gives Apache APISIX an illusion that the apisix-mesh-agent is just an etcd cluster. Not all features are supported, see [etcdv3-api-mimicking](./etcdv3-api-mimicking.md) for details.
