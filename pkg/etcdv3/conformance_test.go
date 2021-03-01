@@ -22,7 +22,7 @@ func TestCheckRangeRequestConformance(t *testing.T) {
 	// Unsupported range query.
 	r.Key = []byte("/apisix/aaaa")
 	r.RangeEnd = []byte("/apisix/route/xxx")
-	assert.Equal(t, e.checkRangeRequestConformance(r), rpctypes.ErrNotCapable)
+	assert.Equal(t, e.checkRangeRequestConformance(r), rpctypes.ErrKeyNotFound)
 	r.RangeEnd = nil
 
 	// Limitations.

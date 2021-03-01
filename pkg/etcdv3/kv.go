@@ -30,6 +30,9 @@ func (e *etcdV3) Range(ctx context.Context, r *etcdserverpb.RangeRequest) (*etcd
 		zap.Any("range_request", r),
 	)
 	if err := e.checkRangeRequestConformance(r); err != nil {
+		if err == rpctypes.ErrKeyNotFound {
+			return _emptyRangeResponse, nil
+		}
 		return nil, err
 	}
 	var (
