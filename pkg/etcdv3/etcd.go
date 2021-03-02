@@ -5,24 +5,18 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
-
-	"google.golang.org/protobuf/proto"
-
-	"go.etcd.io/etcd/api/v3/mvccpb"
-
-	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
-
-	"github.com/api7/apisix-mesh-agent/pkg/types"
-
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
-
+	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/api7/apisix-mesh-agent/pkg/cache"
 	"github.com/api7/apisix-mesh-agent/pkg/config"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
+	"github.com/api7/apisix-mesh-agent/pkg/types"
+	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
 
 // EtcdV3 abstracts the behaviors of the mimicking ETCD v3 server.
