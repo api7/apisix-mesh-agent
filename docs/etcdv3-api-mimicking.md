@@ -120,9 +120,8 @@ the `WatchProgressRequest` currently doesn't have use cases, so it doesn't be im
 
 , only read dir for routes and upstreams are supported. In terms of technology, `key` and `range_end` in
 `WatchCreateRequest` should be:
-
-  * `/apisix/routes` and `/apisix/routet`, or
-  * `/apisix/upstreams` and `/apisix/upstreamt`.
+    - `/apisix/routes` and `/apisix/routet`, or
+    - `/apisix/upstreams` and `/apisix/upstreamt`.
 
 * `prev_kv` in `WatchCreateRequest` should be set to false.
 
