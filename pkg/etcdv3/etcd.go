@@ -186,7 +186,6 @@ func (e *etcdV3) pushEvent(ev *types.Event) {
 						Revision: e.revisioner.Revision(),
 					},
 					WatchId: id,
-					Created: true,
 					Events: []*mvccpb.Event{
 						event,
 					},
@@ -199,7 +198,6 @@ func (e *etcdV3) pushEvent(ev *types.Event) {
 						Revision: e.revisioner.Revision(),
 					},
 					WatchId: id,
-					Created: true,
 					Events: []*mvccpb.Event{
 						event,
 					},

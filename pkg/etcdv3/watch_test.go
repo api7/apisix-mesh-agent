@@ -441,8 +441,9 @@ func TestWatchWithPushEvents(t *testing.T) {
 	stream.reqCh <- wr
 	select {
 	case <-time.After(2 * time.Second):
-	case <-stream.respCh:
-		assert.FailNow(t, "should not receive response")
+		assert.FailNow(t, "didn't receive response in time")
+	case resp := <-stream.respCh:
+		assert.Len(t, resp.Events, 0)
 	}
 
 	events := []types.Event{
@@ -476,8 +477,9 @@ func TestWatchWithPushEvents(t *testing.T) {
 	stream.reqCh <- wr
 	select {
 	case <-time.After(2 * time.Second):
-	case <-stream.respCh:
-		assert.FailNow(t, "should not receive response")
+		assert.FailNow(t, "didn't receive response in time")
+	case resp := <-stream.respCh:
+		assert.Len(t, resp.Events, 0)
 	}
 
 	events = []types.Event{

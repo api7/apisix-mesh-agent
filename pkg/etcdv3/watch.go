@@ -87,9 +87,6 @@ func (ws *watchStream) firstWatch(id int64, resource string, minRev int64) error
 	if err != nil {
 		return err
 	}
-	if len(kvs) == 0 {
-		return nil
-	}
 	evs := make([]*mvccpb.Event, 0, len(kvs))
 	for _, kv := range kvs {
 		evs = append(evs, &mvccpb.Event{
@@ -283,6 +280,18 @@ func (ws *watchStream) onWire() error {
 			}
 			if uv.CreateRequest.StartRevision != 0 {
 				if err := ws.firstWatch(id, resource, uv.CreateRequest.StartRevision); err != nil {
+					return err
+				}
+			} else {
+				// Send response with empty Kvs.
+				resp := &etcdserverpb.WatchResponse{
+					Header: &etcdserverpb.ResponseHeader{
+						Revision: ws.etcd.revisioner.Revision(),
+					},
+					WatchId: id,
+					Created: true,
+				}
+				if err := ws.stream.Send(resp); err != nil {
 					return err
 				}
 			}
