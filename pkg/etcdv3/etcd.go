@@ -31,7 +31,9 @@ type EtcdV3 interface {
 	Serve(net.Listener) error
 	// Shutdown closes the ETCD v3 server.
 	Shutdown() error
-	PushEvent(*types.Event)
+	// PushEvents accepts a bunch of events and converts them to ETCD events,
+	// then sending to watch clients.
+	PushEvents([]types.Event)
 }
 
 // Revisioner defines how to get the current revision.
@@ -107,7 +109,16 @@ func (e *etcdV3) Shutdown() error {
 	return nil
 }
 
-func (e *etcdV3) PushEvent(ev *types.Event) {
+func (e *etcdV3) PushEvents(events []types.Event) {
+	for _, ev := range events {
+		e.pushEvent(&ev)
+	}
+}
+
+func (e *etcdV3) pushEvent(ev *types.Event) {
+	e.logger.Debugw("receive event",
+		zap.Any("event", ev),
+	)
 	var (
 		obj    interface{}
 		name   string

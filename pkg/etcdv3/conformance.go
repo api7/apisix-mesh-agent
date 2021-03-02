@@ -62,8 +62,8 @@ func (e *etcdV3) checkWatchRequestConformance(r *etcdserverpb.WatchRequest) erro
 		if len(key) == 0 {
 			return rpctypes.ErrEmptyKey
 		}
-		if !((key == e.keyPrefix+"/routes" && rangeEnd == e.keyPrefix+"/apisix/routet") ||
-			(key == e.keyPrefix+"/upstreams" && rangeEnd == e.keyPrefix+"/upstreams")) {
+		if !((key == e.keyPrefix+"/routes" && rangeEnd == e.keyPrefix+"/routet") ||
+			(key == e.keyPrefix+"/upstreams" && rangeEnd == e.keyPrefix+"/upstreamt")) {
 
 			log.Warnw("WatchCreateRequest with unsupported key and range_end combination",
 				zap.String("key", string(wr.CreateRequest.Key)),

@@ -42,3 +42,64 @@ func TestCheckRangeRequestConformance(t *testing.T) {
 	r.MaxCreateRevision = 0
 	assert.Nil(t, e.checkRangeRequestConformance(r))
 }
+
+func TestCheckWatchRequestConformance(t *testing.T) {
+	e := &etcdV3{
+		logger:    log.DefaultLogger,
+		keyPrefix: "/apisix",
+	}
+	r := &etcdserverpb.WatchRequest{
+		RequestUnion: &etcdserverpb.WatchRequest_CancelRequest{},
+	}
+	// WatchCancelRequest
+	assert.Nil(t, e.checkWatchRequestConformance(r))
+	// WatchProgressRequest
+	r.RequestUnion = &etcdserverpb.WatchRequest_ProgressRequest{}
+	assert.Equal(t, e.checkWatchRequestConformance(r), rpctypes.ErrNotCapable)
+	// Empty CreateRequest
+	r.RequestUnion = &etcdserverpb.WatchRequest_CreateRequest{}
+	assert.Nil(t, e.checkWatchRequestConformance(r))
+	// Empty key
+	r.RequestUnion = &etcdserverpb.WatchRequest_CreateRequest{
+		CreateRequest: &etcdserverpb.WatchCreateRequest{},
+	}
+	assert.Equal(t, e.checkWatchRequestConformance(r), rpctypes.ErrEmptyKey)
+
+	// Bad Key and RandEnd combination.
+	r.RequestUnion = &etcdserverpb.WatchRequest_CreateRequest{
+		CreateRequest: &etcdserverpb.WatchCreateRequest{
+			Key:      []byte("/apisix/unknowns"),
+			RangeEnd: []byte("/apisix/unknownt"),
+		},
+	}
+	assert.Equal(t, e.checkWatchRequestConformance(r), rpctypes.ErrKeyNotFound)
+
+	// PrevKv
+	r.RequestUnion = &etcdserverpb.WatchRequest_CreateRequest{
+		CreateRequest: &etcdserverpb.WatchCreateRequest{
+			Key:      []byte("/apisix/routes"),
+			RangeEnd: []byte("/apisix/routet"),
+			PrevKv:   true,
+		},
+	}
+	assert.Equal(t, e.checkWatchRequestConformance(r), rpctypes.ErrNotCapable)
+
+	// ProgressNotify
+	r.RequestUnion = &etcdserverpb.WatchRequest_CreateRequest{
+		CreateRequest: &etcdserverpb.WatchCreateRequest{
+			Key:            []byte("/apisix/routes"),
+			RangeEnd:       []byte("/apisix/routet"),
+			ProgressNotify: true,
+		},
+	}
+	assert.Equal(t, e.checkWatchRequestConformance(r), rpctypes.ErrNotCapable)
+	// Fragment
+	r.RequestUnion = &etcdserverpb.WatchRequest_CreateRequest{
+		CreateRequest: &etcdserverpb.WatchCreateRequest{
+			Key:      []byte("/apisix/routes"),
+			RangeEnd: []byte("/apisix/routet"),
+			Fragment: true,
+		},
+	}
+	assert.Equal(t, e.checkWatchRequestConformance(r), rpctypes.ErrNotCapable)
+}

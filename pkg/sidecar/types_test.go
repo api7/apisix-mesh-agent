@@ -34,5 +34,4 @@ func TestSidecarRun(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, ups.Name, "httpbin.default.svc.cluster.local")
 	assert.Len(t, ups.Nodes, 0)
-
 }

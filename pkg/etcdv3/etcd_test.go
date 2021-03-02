@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
-
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"golang.org/x/net/nettest"
@@ -14,6 +12,8 @@ import (
 
 	"github.com/api7/apisix-mesh-agent/pkg/cache"
 	"github.com/api7/apisix-mesh-agent/pkg/config"
+	"github.com/api7/apisix-mesh-agent/pkg/types"
+	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
 
 func TestNewEtcdV3Server(t *testing.T) {
@@ -80,5 +80,50 @@ func TestEtcdV3ServerRun(t *testing.T) {
 		break
 	case <-time.After(2 * time.Second):
 		assert.FailNow(t, "etcd v3 server didn't stop")
+	}
+}
+
+func TestPushEvents(t *testing.T) {
+	events := []types.Event{
+		{
+			Type:   types.EventAdd,
+			Object: &apisix.Route{Id: "123"},
+		},
+		{
+			Type:   types.EventAdd,
+			Object: &apisix.Route{Id: "124"},
+		},
+		{
+			Type:   types.EventAdd,
+			Object: &apisix.Upstream{Id: "125"},
+		},
+	}
+	f := &fakeRevisioner{rev: 1}
+	cfg := &config.Config{
+		LogLevel:      "debug",
+		LogOutput:     "stderr",
+		EtcdKeyPrefix: "/apisix",
+	}
+	etcd, err := NewEtcdV3Server(cfg, cache.NewInMemoryCache(), f)
+	assert.Nil(t, err)
+	ws := &watchStream{
+		ctx:      context.Background(),
+		eventCh:  make(chan *etcdserverpb.WatchResponse),
+		etcd:     etcd.(*etcdV3),
+		route:    make(map[int64]struct{}),
+		upstream: make(map[int64]struct{}),
+	}
+	etcd.(*etcdV3).watchers[1] = ws
+	ws.route[1] = struct{}{}
+	ws.upstream[1] = struct{}{}
+
+	etcd.PushEvents(events)
+
+	for i := 0; i < 3; i++ {
+		select {
+		case <-time.After(2 * time.Second):
+			assert.FailNow(t, "didn't receive event in time")
+		case <-ws.eventCh:
+		}
 	}
 }

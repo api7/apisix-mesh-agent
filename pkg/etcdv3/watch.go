@@ -18,6 +18,8 @@ import (
 var (
 	_sourceMu sync.Mutex
 	_source   rand.Source
+
+	_errDuplicatedWatchId = errors.New("duplicated watch id on stream")
 )
 
 func init() {
@@ -60,12 +62,12 @@ func (ws *watchStream) createWatch(id int64, resource string) error {
 	defer ws.mu.Unlock()
 	if resource == "route" {
 		if _, ok := ws.route[id]; ok {
-			return errors.New("duplicated watch id on stream")
+			return _errDuplicatedWatchId
 		}
 		ws.route[id] = struct{}{}
 	} else if resource == "upstream" {
 		if _, ok := ws.upstream[id]; ok {
-			return errors.New("duplicated watch id on stream")
+			return _errDuplicatedWatchId
 		}
 		ws.upstream[id] = struct{}{}
 	}
@@ -124,6 +126,9 @@ func (ws *watchStream) findAllRoutes(minRev int64) ([]*mvccpb.KeyValue, error) {
 		m, ok := ws.etcd.metaCache[r.Name]
 		ws.etcd.metaMu.RUnlock()
 		if !ok {
+			ws.etcd.logger.Warnw("found route without metadata",
+				zap.String("route_name", key),
+			)
 			continue
 		}
 		if m.modRevision >= minRev {
@@ -161,6 +166,9 @@ func (ws *watchStream) findAllUpstreams(minRev int64) ([]*mvccpb.KeyValue, error
 		m, ok := ws.etcd.metaCache[u.Name]
 		ws.etcd.metaMu.RUnlock()
 		if !ok {
+			ws.etcd.logger.Warnw("found upstream without metadata",
+				zap.String("upstream_name", key),
+			)
 			continue
 		}
 		if m.modRevision >= minRev {
@@ -211,6 +219,8 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 	go func() {
 		if err := ws.onWire(); err != nil {
 			errCh <- err
+		} else {
+			errCh <- nil
 		}
 	}()
 
@@ -232,7 +242,7 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 func (ws *watchStream) onWire() error {
 	for {
 		req, err := ws.stream.Recv()
-		if err != io.EOF {
+		if err == io.EOF {
 			return nil
 		}
 		if err != nil {
