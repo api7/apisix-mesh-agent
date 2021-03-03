@@ -139,4 +139,8 @@ Fragmented `WatchResponse` is not used for now, so doesn't implement it. In term
 ### Others
 
 * `PutRequest` will be implemented silently, it always returns OK.
+
+But don't expect the Put result can be stored by apisix-mesh-agent or try to fetch it `RangeRequest`,
+the content of `PutRequest` was just discarded.
+
 * `DeleteRange`, `Compact`, `Txn` will report error.
