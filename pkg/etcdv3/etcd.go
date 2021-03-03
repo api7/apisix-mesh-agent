@@ -131,11 +131,6 @@ func (e *etcdV3) Serve(listener net.Listener) error {
 }
 
 func (e *etcdV3) version(w http.ResponseWriter, req *http.Request) {
-	if req.URL.Path != "/version" {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
 	w.WriteHeader(http.StatusOK)
 	_, err := w.Write([]byte(`{"etcdserver":"3.5.0-pre","etcdcluster":"3.5.0"}`))
 	if err != nil {

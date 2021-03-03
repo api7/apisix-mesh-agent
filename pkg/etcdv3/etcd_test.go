@@ -2,17 +2,18 @@ package etcdv3
 
 import (
 	"context"
+	"net/http/httptest"
 	"testing"
 	"time"
 
-	"golang.org/x/net/nettest"
-
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"golang.org/x/net/nettest"
 	"google.golang.org/grpc"
 
 	"github.com/api7/apisix-mesh-agent/pkg/cache"
 	"github.com/api7/apisix-mesh-agent/pkg/config"
+	"github.com/api7/apisix-mesh-agent/pkg/log"
 	"github.com/api7/apisix-mesh-agent/pkg/types"
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
@@ -127,4 +128,15 @@ func TestPushEvents(t *testing.T) {
 		case <-ws.eventCh:
 		}
 	}
+}
+
+func TestVersion(t *testing.T) {
+	rw := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/version", nil)
+	e := &etcdV3{
+		logger: log.DefaultLogger,
+	}
+	e.version(rw, req)
+	assert.Equal(t, rw.Code, 200)
+	assert.Equal(t, rw.Body.String(), `{"etcdserver":"3.5.0-pre","etcdcluster":"3.5.0"}`)
 }
