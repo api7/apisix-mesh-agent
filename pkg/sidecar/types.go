@@ -88,7 +88,9 @@ loop:
 			break loop
 		}
 		s.reflectToLog(events)
+		// TODO may reflect to etcd after cache one by one.
 		s.reflectToCache(events)
+		s.reflectToEtcd(events)
 		// sidecar goroutine doesn't need to watch on stop channel,
 		// since it can receive the quit signal from the provisioner.
 	}
@@ -100,6 +102,12 @@ func (s *Sidecar) reflectToLog(events []types.Event) {
 	s.logger.Debugw("events arrived from provisioner",
 		zap.Any("events", events),
 	)
+}
+
+func (s *Sidecar) reflectToEtcd(events []types.Event) {
+	go func(events []types.Event) {
+		s.etcdSrv.PushEvents(events)
+	}(events)
 }
 
 // Revision implements etcdv3.Revisioner.

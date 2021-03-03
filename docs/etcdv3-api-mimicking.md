@@ -108,3 +108,30 @@ In terms of technology, the `serializable` field in `RangeRequest` is ignored.
 
 In terms of technology, fields like `revision`, `min_mod_revision`, `max_mod_revision`, `min_create_revision`
 and `max_create_revision` are ineffective.
+
+### WatchRequest
+
+* `WatchProgressRequest` is not supported yet.
+
+By default ETCD supports `WatchCreateRequest`, `WatchProgressRequest` and `WatchCancelRequest`,
+the `WatchProgressRequest` currently doesn't have use cases, so it doesn't be implemented.
+
+* Key query in `WatchCreateRequest` is limited as "read dir".
+
+, only read dir for routes and upstreams are supported. In terms of technology, `key` and `range_end` in
+`WatchCreateRequest` should be:
+    - `/apisix/routes` and `/apisix/routet`, or
+    - `/apisix/upstreams` and `/apisix/upstreamt`.
+
+* `prev_kv` in `WatchCreateRequest` should be set to false.
+
+So the `WatchResponse` will never include the previous kv pairs.
+
+* `progress_notify` should be set to false.
+
+Since the `WatchProgressRequest` is not supported, this field should never be enabled.
+
+* `WatchResponse` cannot be fragmented.
+
+Fragmented `WatchResponse` is not used for now, so doesn't implement it. In terms of technology, `fragment` field in
+`WatchCreateRequest` cannot be set to `true`.

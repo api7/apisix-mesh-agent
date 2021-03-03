@@ -4,11 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"google.golang.org/protobuf/encoding/protojson"
-
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/api7/apisix-mesh-agent/pkg/cache"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
