@@ -135,3 +135,8 @@ Since the `WatchProgressRequest` is not supported, this field should never be en
 
 Fragmented `WatchResponse` is not used for now, so doesn't implement it. In terms of technology, `fragment` field in
 `WatchCreateRequest` cannot be set to `true`.
+
+### Others
+
+* `PutRequest` will be implemented silently, it always returns OK.
+* `DeleteRange`, `Compact`, `Txn` will report error.

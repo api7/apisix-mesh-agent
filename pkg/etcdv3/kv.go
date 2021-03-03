@@ -63,22 +63,32 @@ func (e *etcdV3) Range(ctx context.Context, r *etcdserverpb.RangeRequest) (*etcd
 
 // Put implements etcdserverpb.KVServer.Put method.
 func (e *etcdV3) Put(ctx context.Context, r *etcdserverpb.PutRequest) (*etcdserverpb.PutResponse, error) {
-	return nil, nil
+	e.logger.Warnw("PutRequest received",
+		zap.Any("put_request", r),
+	)
+	return &etcdserverpb.PutResponse{
+		Header: &etcdserverpb.ResponseHeader{
+			Revision: e.revisioner.Revision(),
+		},
+	}, nil
 }
 
 // DeleteRange implements etcdserverpb.KVServer.DeleteRange method.
 func (e *etcdV3) DeleteRange(ctx context.Context, r *etcdserverpb.DeleteRangeRequest) (*etcdserverpb.DeleteRangeResponse, error) {
-	return nil, nil
+	e.logger.Warnw("DeleteRange received, which is not supported yet")
+	return nil, rpctypes.ErrNotCapable
 }
 
 // Txn implements etcdserverpb.KVServer.Txn method.
 func (e *etcdV3) Txn(ctx context.Context, r *etcdserverpb.TxnRequest) (*etcdserverpb.TxnResponse, error) {
-	return nil, nil
+	e.logger.Warnw("Txn received, which is not supported yet")
+	return nil, rpctypes.ErrNotCapable
 }
 
 // Compact implements etcdserverpb..Compact method.
 func (e *etcdV3) Compact(ctx context.Context, r *etcdserverpb.CompactionRequest) (*etcdserverpb.CompactionResponse, error) {
-	return nil, nil
+	e.logger.Warnw("Compact received, which is not supported yet")
+	return nil, rpctypes.ErrNotCapable
 }
 
 func (e *etcdV3) composeKeyValue(key []byte, value []byte) *mvccpb.KeyValue {
