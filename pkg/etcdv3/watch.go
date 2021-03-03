@@ -188,6 +188,15 @@ func (ws *watchStream) findAllUpstreams(minRev int64) ([]*mvccpb.KeyValue, error
 	return kvs, nil
 }
 
+func (e *etcdV3) addWatchStream(ws *watchStream) {
+	e.watcherMu.Lock()
+	id := e.nextWatchId
+	e.nextWatchId++
+	ws.id = id
+	e.watchers[id] = ws
+	e.watcherMu.Unlock()
+}
+
 func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 	ctx, cancel := context.WithCancel(stream.Context())
 	ws := &watchStream{
@@ -198,16 +207,11 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 		eventCh:  make(chan *etcdserverpb.WatchResponse),
 		ctx:      ctx,
 	}
-	e.watcherMu.Lock()
-	id := e.nextWatchId
-	e.nextWatchId++
-	ws.id = id
-	e.watchers[id] = ws
-	e.watcherMu.Unlock()
+	e.addWatchStream(ws)
 
 	defer func() {
 		e.watcherMu.Lock()
-		delete(e.watchers, id)
+		delete(e.watchers, ws.id)
 		e.watcherMu.Unlock()
 		cancel()
 	}()
