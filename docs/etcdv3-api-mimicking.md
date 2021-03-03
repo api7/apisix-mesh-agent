@@ -31,6 +31,7 @@ So far Apache APISIX uses the following APIs:
 The `RangeRequest` and `WatchRequest` will be implemented meticulously;
 As for the `PutRequest`, since the data uploaded from Apache APISIX are not used by apisix-mesh-agent,
 so the `PutRequest` can be dummy. Just lie to Apache APISIX for avoiding throwing too many error logs.
+Other APIs, like `Lease`, are not supported unless Apache APISIX uses it in the future.
 
 For the sake of observability, the mimic ETCD API should be accessed normally from [etcdctl](https://etcd.io/docs/current/dev-guide/interacting_v3/),
 so [gRPC](https://grpc.io/) will be chosen as the protocol. However, Apache APISIX relies on HTTP restful APIs, which supported by
