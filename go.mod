@@ -7,6 +7,7 @@ require (
 	github.com/envoyproxy/protoc-gen-validate v0.4.1
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/golang/protobuf v1.4.2
+	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.0
 	go.etcd.io/etcd/api/v3 v3.5.0-alpha.0

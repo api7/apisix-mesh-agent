@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/net/nettest"
+
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
-	"golang.org/x/net/nettest"
 	"google.golang.org/grpc"
 
 	"github.com/api7/apisix-mesh-agent/pkg/cache"
@@ -74,7 +75,7 @@ func TestEtcdV3ServerRun(t *testing.T) {
 	assert.Len(t, resp.Kvs, 1)
 	assert.Equal(t, resp.Kvs[0].Key, []byte("/apisix/upstreams/1"))
 
-	assert.Nil(t, srv.Shutdown())
+	assert.Nil(t, srv.Shutdown(context.Background()))
 	select {
 	case <-stopCh:
 		break
