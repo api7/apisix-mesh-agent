@@ -239,5 +239,42 @@ func TestRangeRequest(t *testing.T) {
 	assert.Equal(t, key1, "/apisix/routes/1")
 	assert.Equal(t, key2, "/apisix/routes/2")
 	assert.Nil(t, err)
+}
 
+func TestDeleteRange(t *testing.T) {
+	e := &etcdV3{
+		logger: log.DefaultLogger,
+	}
+	resp, err := e.DeleteRange(context.Background(), nil)
+	assert.Nil(t, resp)
+	assert.Equal(t, err, rpctypes.ErrNotCapable)
+}
+
+func TestCompact(t *testing.T) {
+	e := &etcdV3{
+		logger: log.DefaultLogger,
+	}
+	resp, err := e.Compact(context.Background(), nil)
+	assert.Nil(t, resp)
+	assert.Equal(t, err, rpctypes.ErrNotCapable)
+}
+
+func TestTxn(t *testing.T) {
+	e := &etcdV3{
+		logger: log.DefaultLogger,
+	}
+	resp, err := e.Txn(context.Background(), nil)
+	assert.Nil(t, resp)
+	assert.Equal(t, err, rpctypes.ErrNotCapable)
+}
+
+func TestPut(t *testing.T) {
+	f := &fakeRevisioner{rev: 1}
+	e := &etcdV3{
+		logger:     log.DefaultLogger,
+		revisioner: f,
+	}
+	resp, err := e.Put(context.Background(), nil)
+	assert.Equal(t, resp.Header.Revision, f.rev)
+	assert.Nil(t, err)
 }
