@@ -2,6 +2,7 @@ package etcdv3
 
 import (
 	"context"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 
 	"github.com/api7/apisix-mesh-agent/pkg/cache"
 	"github.com/api7/apisix-mesh-agent/pkg/config"
+	"github.com/api7/apisix-mesh-agent/pkg/log"
 	"github.com/api7/apisix-mesh-agent/pkg/types"
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
@@ -74,7 +76,7 @@ func TestEtcdV3ServerRun(t *testing.T) {
 	assert.Len(t, resp.Kvs, 1)
 	assert.Equal(t, resp.Kvs[0].Key, []byte("/apisix/upstreams/1"))
 
-	assert.Nil(t, srv.Shutdown())
+	assert.Nil(t, srv.Shutdown(context.Background()))
 	select {
 	case <-stopCh:
 		break
@@ -126,4 +128,15 @@ func TestPushEvents(t *testing.T) {
 		case <-ws.eventCh:
 		}
 	}
+}
+
+func TestVersion(t *testing.T) {
+	rw := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/version", nil)
+	e := &etcdV3{
+		logger: log.DefaultLogger,
+	}
+	e.version(rw, req)
+	assert.Equal(t, rw.Code, 200)
+	assert.Equal(t, rw.Body.String(), `{"etcdserver":"3.5.0-pre","etcdcluster":"3.5.0"}`)
 }

@@ -1,8 +1,10 @@
 package sidecar
 
 import (
+	"context"
 	"net"
 	"sync/atomic"
+	"time"
 
 	"github.com/api7/apisix-mesh-agent/pkg/etcdv3"
 
@@ -79,6 +81,16 @@ func (s *Sidecar) Run(stop chan struct{}) error {
 				zap.Error(err),
 			)
 		}
+	}()
+
+	defer func() {
+		shutCtx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+		if err := s.etcdSrv.Shutdown(shutCtx); err != nil {
+			s.logger.Errorw("failed to shutdown etcd server",
+				zap.Error(err),
+			)
+		}
+		cancel()
 	}()
 
 loop:

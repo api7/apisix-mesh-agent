@@ -1,10 +1,14 @@
 package etcdv3
 
 import (
+	"context"
 	"net"
+	"net/http"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/soheilhy/cmux"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.uber.org/zap"
@@ -24,7 +28,7 @@ type EtcdV3 interface {
 	// Serve accepts a listener and launches the ETCD v3 server.
 	Serve(net.Listener) error
 	// Shutdown closes the ETCD v3 server.
-	Shutdown() error
+	Shutdown(context.Context) error
 	// PushEvents accepts a bunch of events and converts them to ETCD events,
 	// then sending to watch clients.
 	PushEvents([]types.Event)
@@ -44,6 +48,7 @@ type etcdV3 struct {
 	keyPrefix   string
 	logger      *log.Logger
 	cache       cache.Cache
+	httpSrv     *http.Server
 	grpcSrv     *grpc.Server
 	watcherMu   sync.RWMutex
 	nextWatchId int64
@@ -76,6 +81,10 @@ func NewEtcdV3Server(cfg *config.Config, cache cache.Cache, revisioner Revisione
 }
 
 func (e *etcdV3) Serve(listener net.Listener) error {
+	m := cmux.New(listener)
+	grpcl := m.Match(cmux.HTTP2())
+	httpl := m.Match(cmux.HTTP1Fast())
+
 	kep := keepalive.EnforcementPolicy{
 		MinTime: 15 * time.Second,
 	}
@@ -92,14 +101,50 @@ func (e *etcdV3) Serve(listener net.Listener) error {
 	etcdserverpb.RegisterKVServer(grpcSrv, e)
 	etcdserverpb.RegisterWatchServer(grpcSrv, e)
 
-	if err := grpcSrv.Serve(listener); err != nil {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/version", e.version)
+	e.httpSrv = &http.Server{
+		Handler: mux,
+	}
+
+	go func() {
+		if err := e.httpSrv.Serve(httpl); err != nil && !strings.Contains(err.Error(), "mux: listener closed") {
+			e.logger.Errorw("http server serve failure",
+				zap.Error(err),
+			)
+		}
+	}()
+
+	go func() {
+		if err := grpcSrv.Serve(grpcl); err != nil {
+			e.logger.Errorw("grpc server serve failure",
+				zap.Error(err),
+			)
+		}
+	}()
+
+	if err := m.Serve(); err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
 		return err
 	}
+
 	return nil
 }
 
-func (e *etcdV3) Shutdown() error {
+func (e *etcdV3) version(w http.ResponseWriter, req *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	_, err := w.Write([]byte(`{"etcdserver":"3.5.0-pre","etcdcluster":"3.5.0"}`))
+	if err != nil {
+		e.logger.Warnw("failed to send version info",
+			zap.Error(err),
+		)
+	}
+}
+
+func (e *etcdV3) Shutdown(ctx context.Context) error {
 	e.grpcSrv.GracefulStop()
+	if err := e.httpSrv.Shutdown(ctx); err != nil {
+		return err
+	}
 	return nil
 }
 
