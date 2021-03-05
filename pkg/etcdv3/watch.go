@@ -226,8 +226,6 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 	go func() {
 		if err := ws.onWire(); err != nil {
 			errCh <- err
-		} else {
-			errCh <- nil
 		}
 	}()
 
@@ -240,6 +238,11 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 				)
 				return err
 			}
+		case <-ws.stream.Context().Done():
+			ws.etcd.logger.Debugw("client closed watch stream prematurely",
+				zap.Error(ws.stream.Context().Err()),
+			)
+			return nil
 		case werr := <-errCh:
 			return werr
 		}

@@ -4,9 +4,12 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"google.golang.org/grpc/grpclog"
 
 	gatewayruntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/soheilhy/cmux"
@@ -309,4 +312,9 @@ func (e *etcdV3) registerGateway(addr string) (*gatewayruntime.ServeMux, error) 
 		}
 	}()
 	return gwmux, nil
+}
+
+func init() {
+	logger := grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr)
+	grpclog.SetLoggerV2(logger)
 }
