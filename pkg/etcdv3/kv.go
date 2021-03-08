@@ -17,7 +17,9 @@ import (
 
 var (
 	_errInternalError   = status.New(codes.Internal, "internal error").Err()
-	_emptyRangeResponse = &etcdserverpb.RangeResponse{}
+	_emptyRangeResponse = &etcdserverpb.RangeResponse{
+		Header: &etcdserverpb.ResponseHeader{},
+	}
 
 	_pbjsonMarshalOpts = &protojson.MarshalOptions{
 		UseEnumNumbers: true,
@@ -31,6 +33,7 @@ func (e *etcdV3) Range(ctx context.Context, r *etcdserverpb.RangeRequest) (*etcd
 	)
 	if err := e.checkRangeRequestConformance(r); err != nil {
 		if err == rpctypes.ErrKeyNotFound {
+			_emptyRangeResponse.Header.Revision = e.revisioner.Revision()
 			return _emptyRangeResponse, nil
 		}
 		return nil, err
@@ -48,6 +51,7 @@ func (e *etcdV3) Range(ctx context.Context, r *etcdserverpb.RangeRequest) (*etcd
 		if err != rpctypes.ErrKeyNotFound {
 			return nil, err
 		}
+		_emptyRangeResponse.Header.Revision = e.revisioner.Revision()
 		return _emptyRangeResponse, nil
 	}
 	if r.KeysOnly {

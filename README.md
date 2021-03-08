@@ -4,6 +4,8 @@ apisix-mesh-agent
 Agent of [Apache APISIX](http://apisix.apache.org/) to extend it as a [Service
 Mesh](https://www.redhat.com/en/topics/microservices/what-is-a-service-mesh) Sidecar.
 
+![apisix-mesh-agent](./docs/images/data-plane-overview.png)
+
 Status
 ------
 
@@ -20,6 +22,20 @@ The Design of APISIX Mesh
 -------------------------
 
 See the [Design](./docs/design.md) for the details.
+
+The Internal of apisix-mesh-agent
+---------------------------------
+
+If you're interested in the internal of apisix-mesh-agent, we recommand you
+to read the [the-internal-of-apisix-mesh-agent](./docs/the-internal-of-apisix-mesh-agent.md), it explains each
+module's function and responsibility.
+
+Get Involved to Development
+---------------------------
+
+Welcome to make contributions, but before you start, please check out
+[development.md](./docs/development.md) to learn how to run and debug apisix-mesh-agent
+in your own environment.
 
 License
 -------

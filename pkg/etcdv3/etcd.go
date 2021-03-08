@@ -4,12 +4,18 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"google.golang.org/grpc/grpclog"
+
+	gatewayruntime "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/soheilhy/cmux"
+	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	etcdservergw "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -41,6 +47,7 @@ type Revisioner interface {
 }
 
 type etcdV3 struct {
+	ctx context.Context
 	// TODO metadata should be embedded into cache.
 	metaMu      sync.RWMutex
 	metaCache   map[string]meta
@@ -81,6 +88,11 @@ func NewEtcdV3Server(cfg *config.Config, cache cache.Cache, revisioner Revisione
 }
 
 func (e *etcdV3) Serve(listener net.Listener) error {
+	// This context is used to notify the gateway grpc conn should be closed.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	e.ctx = ctx
+
 	m := cmux.New(listener)
 	grpcl := m.Match(cmux.HTTP2())
 	httpl := m.Match(cmux.HTTP1Fast())
@@ -100,11 +112,29 @@ func (e *etcdV3) Serve(listener net.Listener) error {
 	e.grpcSrv = grpcSrv
 	etcdserverpb.RegisterKVServer(grpcSrv, e)
 	etcdserverpb.RegisterWatchServer(grpcSrv, e)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/version", e.version)
-	e.httpSrv = &http.Server{
-		Handler: mux,
+	if gwmux, err := e.registerGateway(listener.Addr().String()); err != nil {
+		e.logger.Errorw("failed to register gateway",
+			zap.Error(err),
+		)
+		return err
+	} else {
+		mux := http.NewServeMux()
+		mux.Handle(
+			"/v3/",
+			wsproxy.WebsocketProxy(
+				gwmux,
+				wsproxy.WithRequestMutator(
+					func(incoming *http.Request, outgoing *http.Request) *http.Request {
+						outgoing.Method = "POST"
+						return outgoing
+					},
+				),
+			),
+		)
+		mux.HandleFunc("/version", e.version)
+		e.httpSrv = &http.Server{
+			Handler: mux,
+		}
 	}
 
 	go func() {
@@ -256,4 +286,35 @@ func (e *etcdV3) pushEvent(ev *types.Event) {
 		}(ws)
 	}
 	e.watcherMu.RUnlock()
+}
+
+func (e *etcdV3) registerGateway(addr string) (*gatewayruntime.ServeMux, error) {
+	e.logger.Infow("registering grpc gateway")
+	grpcConn, err := grpc.DialContext(e.ctx, addr,
+		grpc.WithInsecure(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	gwmux := gatewayruntime.NewServeMux()
+	if err := etcdservergw.RegisterKVHandler(e.ctx, gwmux, grpcConn); err != nil {
+		return nil, err
+	}
+	if err := etcdservergw.RegisterWatchHandler(e.ctx, gwmux, grpcConn); err != nil {
+		return nil, err
+	}
+	go func() {
+		<-e.ctx.Done()
+		if err := grpcConn.Close(); err != nil {
+			e.logger.Warnw("failed to close local gateway grpc conn: ",
+				zap.Error(err),
+			)
+		}
+	}()
+	return gwmux, nil
+}
+
+func init() {
+	logger := grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr)
+	grpclog.SetLoggerV2(logger)
 }
