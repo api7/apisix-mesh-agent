@@ -120,7 +120,7 @@ func (ws *watchStream) findAllRoutes(minRev int64) ([]*mvccpb.KeyValue, error) {
 	for _, r := range routes {
 		key := ws.etcd.keyPrefix + "/routes/" + r.Id
 		ws.etcd.metaMu.RLock()
-		m, ok := ws.etcd.metaCache[r.Name]
+		m, ok := ws.etcd.metaCache[key]
 		ws.etcd.metaMu.RUnlock()
 		if !ok {
 			ws.etcd.logger.Warnw("found route without metadata",
@@ -160,7 +160,7 @@ func (ws *watchStream) findAllUpstreams(minRev int64) ([]*mvccpb.KeyValue, error
 	for _, u := range upstreams {
 		key := ws.etcd.keyPrefix + "/upstreams/" + u.Id
 		ws.etcd.metaMu.RLock()
-		m, ok := ws.etcd.metaCache[u.Name]
+		m, ok := ws.etcd.metaCache[key]
 		ws.etcd.metaMu.RUnlock()
 		if !ok {
 			ws.etcd.logger.Warnw("found upstream without metadata",
@@ -208,20 +208,24 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 		ctx:      ctx,
 	}
 	e.addWatchStream(ws)
+	e.logger.Debugw("add new watcher",
+		zap.Int64("id", ws.id),
+	)
 
 	defer func() {
 		e.watcherMu.Lock()
 		delete(e.watchers, ws.id)
 		e.watcherMu.Unlock()
 		cancel()
+		e.logger.Debugw("delete watcher",
+			zap.Int64("id", ws.id),
+		)
 	}()
 
 	errCh := make(chan error, 1)
 	go func() {
 		if err := ws.onWire(); err != nil {
 			errCh <- err
-		} else {
-			errCh <- nil
 		}
 	}()
 
@@ -234,6 +238,11 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 				)
 				return err
 			}
+		case <-ws.stream.Context().Done():
+			ws.etcd.logger.Debugw("client closed watch stream prematurely",
+				zap.Error(ws.stream.Context().Err()),
+			)
+			return nil
 		case werr := <-errCh:
 			return werr
 		}
