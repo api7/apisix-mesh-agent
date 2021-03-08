@@ -10,6 +10,7 @@ import (
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	discoveryv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"go.uber.org/zap"
+	"google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/genproto/googleapis/rpc/status"
 	grpcp "google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -51,8 +52,9 @@ type grpcProvisioner struct {
 // NewXDSProvisioner creates a provisioner which fetches config over gRPC.
 func NewXDSProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
 	if !strings.HasPrefix(cfg.XDSConfigSource, "grpc://") {
-		return nil, errors.New("bad xds config resource")
+		return nil, errors.New("bad xds config source")
 	}
+	cs := strings.TrimPrefix(cfg.XDSConfigSource, "grpc://")
 	logger, err := log.NewLogger(
 		log.WithOutputFile(cfg.LogOutput),
 		log.WithLogLevel(cfg.LogLevel),
@@ -72,7 +74,7 @@ func NewXDSProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
 	}
 	return &grpcProvisioner{
 		node:         node,
-		configSource: cfg.XDSConfigSource,
+		configSource: cs,
 		logger:       logger,
 		evChan:       make(chan []types.Event),
 		v3Adaptor:    adapter,
@@ -126,11 +128,16 @@ func (p *grpcProvisioner) firstSend() {
 	}
 	dr2 := &discoveryv3.DiscoveryRequest{
 		Node:    p.node,
+		TypeUrl: types.ClusterUrl,
+	}
+	dr3 := &discoveryv3.DiscoveryRequest{
+		Node:    p.node,
 		TypeUrl: types.ClusterLoadAssignmentUrl,
 	}
 
 	p.sendCh <- dr1
 	p.sendCh <- dr2
+	p.sendCh <- dr3
 	p.logger.Debugw("sent initial discovery requests for route and cluster")
 }
 
@@ -138,26 +145,24 @@ func (p *grpcProvisioner) firstSend() {
 // Send operation will be retried continuously until successful or the context is
 // cancelled.
 func (p *grpcProvisioner) sendLoop(ctx context.Context, client discoveryv3.AggregatedDiscoveryService_StreamAggregatedResourcesClient) {
-	var dr *discoveryv3.DiscoveryRequest
-
-	condFunc := func() (bool, error) {
-		if err := client.Send(dr); err != nil {
-			p.logger.Errorw("failed to send discovery request",
-				zap.Error(err),
-				zap.String("config_source", p.configSource),
-			)
-			return false, nil
-		}
-		return true, nil
-	}
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case dr = <-p.sendCh:
+		case dr := <-p.sendCh:
 			p.logger.Debugw("sending discovery request",
 				zap.Any("body", dr),
 			)
+			condFunc := func() (bool, error) {
+				if err := client.Send(dr); err != nil {
+					p.logger.Errorw("failed to send discovery request",
+						zap.Error(err),
+						zap.String("config_source", p.configSource),
+					)
+					return false, nil
+				}
+				return true, nil
+			}
 			go func() {
 				_ = wait.PollImmediateUntil(time.Second, condFunc, ctx.Done())
 			}()
@@ -214,6 +219,7 @@ func (p *grpcProvisioner) translateLoop(ctx context.Context) {
 			}
 			if err := p.translate(resp); err != nil {
 				ackReq.ErrorDetail = &status.Status{
+					Code:    int32(code.Code_INVALID_ARGUMENT),
 					Message: err.Error(),
 				}
 			} else {
