@@ -28,4 +28,7 @@ func TestConfigValidate(t *testing.T) {
 	assert.Equal(t, cfg.Validate(), ErrBadGRPCListen)
 	cfg.GRPCListen = "hello"
 	assert.Equal(t, cfg.Validate(), ErrBadGRPCListen)
+
+	cfg.Provisioner = "xds-v3-grpc"
+	assert.Equal(t, cfg.Validate(), ErrEmptyXDSConfigSource)
 }

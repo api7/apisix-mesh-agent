@@ -25,3 +25,8 @@ Build Date: %s
 	expectedVersion = fmt.Sprintf(expectedVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH, date.String())
 	assert.Equal(t, expectedVersion, ver, "bad version")
 }
+
+func TestShort(t *testing.T) {
+	_version = "1.1.1"
+	assert.Equal(t, Short(), _version)
+}

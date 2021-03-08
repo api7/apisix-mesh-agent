@@ -15,6 +15,11 @@ var (
 	_timestamp   = "0"
 )
 
+// Short returns a short version representation.
+func Short() string {
+	return _version
+}
+
 // String returns a readable version info.
 func String() string {
 	buf := bytes.NewBuffer(nil)

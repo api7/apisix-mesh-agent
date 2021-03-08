@@ -4,11 +4,15 @@ import (
 	"errors"
 	"net"
 	"strconv"
+
+	"github.com/google/uuid"
 )
 
 const (
 	// XDSV3FileProvioner means to use the xds v3 file provisioner.
 	XDSV3FileProvisioner = "xds-v3-file"
+	// XDSV3GRPCProvisioner means to use the xds v3 grpc provisioner.
+	XDSV3GRPCProvisioner = "xds-v3-grpc"
 )
 
 var (
@@ -16,6 +20,8 @@ var (
 	ErrUnknownProvisioner = errors.New("unknown provisioner")
 	// ErrBadGRPCListen means the grpc listen address is invalid.
 	ErrBadGRPCListen = errors.New("bad grpc listen address")
+	// ErrEmptyXDSConfigSource means the XDS config source is empty.
+	ErrEmptyXDSConfigSource = errors.New("empty xds config source, --xds-config-source option is required")
 
 	// DefaultGRPCListen is the default gRPC server listen address.
 	DefaultGRPCListen = "127.0.0.1:2379"
@@ -26,15 +32,19 @@ var (
 
 // Config contains configurations required for running apisix-mesh-agent.
 type Config struct {
+	// Running Id of this instance, it will be filled by
+	// a random string when the instance started.
+	RunId string
 	// The minimum log level that will be printed.
 	LogLevel string `json:"log_level" yaml:"log_level"`
 	// The destination of logs.
 	LogOutput string `json:"log_output" yaml:"log_output"`
 	// The Provisioner to use.
-	// Value can be "xds-v3-file".
+	// Value can be "xds-v3-file", "xds-v3-grpc".
 	Provisioner string `json:"provisioner" yaml:"provisioner"`
 	// The watched xds files, only valid if the Provisioner is "xds-v3-file"
-	XDSWatchFiles []string `json:"xds_watch_files" yaml:"xds_watch_files"`
+	XDSWatchFiles   []string `json:"xds_watch_files" yaml:"xds_watch_files"`
+	XDSConfigSource string   `json:"xds_config_source" yaml:"xds_config_source"`
 	// The grpc listen address
 	GRPCListen string `json:"grpc_listen" yaml:"grpc_listen"`
 	// The key prefix in the mimicking etcd v3 server.
@@ -45,6 +55,7 @@ type Config struct {
 // their default values.
 func NewDefaultConfig() *Config {
 	return &Config{
+		RunId:         uuid.NewString(),
 		LogLevel:      "info",
 		LogOutput:     "stderr",
 		Provisioner:   XDSV3FileProvisioner,
@@ -57,8 +68,11 @@ func (cfg *Config) Validate() error {
 	if cfg.Provisioner == "" {
 		return errors.New("unspecified provisioner")
 	}
-	if cfg.Provisioner != XDSV3FileProvisioner {
+	if cfg.Provisioner != XDSV3FileProvisioner && cfg.Provisioner != XDSV3GRPCProvisioner {
 		return ErrUnknownProvisioner
+	}
+	if cfg.Provisioner == XDSV3GRPCProvisioner && cfg.XDSConfigSource == "" {
+		return ErrEmptyXDSConfigSource
 	}
 	ip, port, err := net.SplitHostPort(cfg.GRPCListen)
 	if err != nil {

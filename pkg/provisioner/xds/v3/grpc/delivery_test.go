@@ -1,24 +1,23 @@
-package file
+package grpc
 
 import (
 	"testing"
 
+	"github.com/api7/apisix-mesh-agent/pkg/id"
+	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	endpointv3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
+
+	xdsv3 "github.com/api7/apisix-mesh-agent/pkg/adaptor/xds/v3"
+	"github.com/api7/apisix-mesh-agent/pkg/config"
+	"github.com/api7/apisix-mesh-agent/pkg/log"
 	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 	proto2 "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
-
-	xdsv3 "github.com/api7/apisix-mesh-agent/pkg/adaptor/xds/v3"
-	"github.com/api7/apisix-mesh-agent/pkg/config"
-	"github.com/api7/apisix-mesh-agent/pkg/id"
-	"github.com/api7/apisix-mesh-agent/pkg/log"
-	"github.com/api7/apisix-mesh-agent/pkg/provisioner/util"
-	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
 
 func TestProcessRouteConfigurationV3(t *testing.T) {
@@ -60,14 +59,15 @@ func TestProcessRouteConfigurationV3(t *testing.T) {
 	}
 	adaptor, err := xdsv3.NewAdaptor(cfg)
 	assert.Nil(t, err)
-	p := &xdsFileProvisioner{
+	p := &grpcProvisioner{
 		logger:    log.DefaultLogger,
 		v3Adaptor: adaptor,
 	}
 	var opaque any.Any
 	opaque.TypeUrl = "type.googleapis.com/" + string(rc.ProtoReflect().Descriptor().FullName())
 	assert.Nil(t, anypb.MarshalFrom(&opaque, rc, proto2.MarshalOptions{}))
-	routes := p.processRouteConfigurationV3(&opaque)
+	routes, err := p.processRouteConfigurationV3(&opaque)
+	assert.Nil(t, err)
 	assert.Len(t, routes, 1)
 }
 
@@ -134,23 +134,22 @@ func TestProcessClusterV3(t *testing.T) {
 	}
 	adaptor, err := xdsv3.NewAdaptor(cfg)
 	assert.Nil(t, err)
-	p := &xdsFileProvisioner{
-		logger:        log.DefaultLogger,
-		v3Adaptor:     adaptor,
-		state:         make(map[string]*util.Manifest),
-		upstreamCache: make(map[string]*apisix.Upstream),
+	p := &grpcProvisioner{
+		logger:    log.DefaultLogger,
+		v3Adaptor: adaptor,
+		upstreams: make(map[string]*apisix.Upstream),
 	}
-	upstreams := p.processClusterV3(&opaque)
-	assert.Len(t, upstreams, 1)
-	assert.Equal(t, upstreams[0].Name, "httpbin.default.svc.cluster.local")
-	assert.Equal(t, upstreams[0].Id, id.GenID(upstreams[0].Name))
-	assert.Len(t, upstreams[0].Nodes, 2)
-	assert.Equal(t, upstreams[0].Nodes[0].Host, "10.0.3.11")
-	assert.Equal(t, upstreams[0].Nodes[0].Port, int32(8000))
-	assert.Equal(t, upstreams[0].Nodes[0].Weight, int32(100))
-	assert.Equal(t, upstreams[0].Nodes[1].Host, "10.0.3.12")
-	assert.Equal(t, upstreams[0].Nodes[1].Port, int32(8000))
-	assert.Equal(t, upstreams[0].Nodes[1].Weight, int32(80))
+	ups, err := p.processClusterV3(&opaque)
+	assert.Nil(t, err)
+	assert.Equal(t, ups.Name, "httpbin.default.svc.cluster.local")
+	assert.Equal(t, ups.Id, id.GenID(ups.Name))
+	assert.Len(t, ups.Nodes, 2)
+	assert.Equal(t, ups.Nodes[0].Host, "10.0.3.11")
+	assert.Equal(t, ups.Nodes[0].Port, int32(8000))
+	assert.Equal(t, ups.Nodes[0].Weight, int32(100))
+	assert.Equal(t, ups.Nodes[1].Host, "10.0.3.12")
+	assert.Equal(t, ups.Nodes[1].Port, int32(8000))
+	assert.Equal(t, ups.Nodes[1].Weight, int32(80))
 }
 
 func TestProcessClusterLoadAssignment(t *testing.T) {
@@ -212,16 +211,17 @@ func TestProcessClusterLoadAssignment(t *testing.T) {
 	}
 	adaptor, err := xdsv3.NewAdaptor(cfg)
 	assert.Nil(t, err)
-	p := &xdsFileProvisioner{
-		logger:        log.DefaultLogger,
-		v3Adaptor:     adaptor,
-		state:         make(map[string]*util.Manifest),
-		upstreamCache: make(map[string]*apisix.Upstream),
+	p := &grpcProvisioner{
+		logger:    log.DefaultLogger,
+		v3Adaptor: adaptor,
+		upstreams: make(map[string]*apisix.Upstream),
 	}
 	// Reject since the cluster is unknown.
-	assert.Nil(t, p.processClusterLoadAssignmentV3(&opaque))
+	ups, err := p.processClusterLoadAssignmentV3(&opaque)
+	assert.Nil(t, ups)
+	assert.Equal(t, err, _errUnknownClusterName)
 
-	ups := &apisix.Upstream{
+	ups = &apisix.Upstream{
 		Name: "httpbin.default.svc.cluster.local",
 		Nodes: []*apisix.Node{
 			{
@@ -231,21 +231,26 @@ func TestProcessClusterLoadAssignment(t *testing.T) {
 			},
 		},
 	}
-	p.upstreamCache[ups.Name] = ups
+	p.upstreams[ups.Name] = ups
 	// Reject since the cluster already has endpoints.
-	assert.Nil(t, p.processClusterLoadAssignmentV3(&opaque))
+	ups, err = p.processClusterLoadAssignmentV3(&opaque)
+	assert.Nil(t, ups)
+	assert.Equal(t, err, _errRedundantEDS)
 
-	ups.Nodes = nil
-	p.upstreamCache[ups.Name] = ups
+	ups = &apisix.Upstream{
+		Name: "httpbin.default.svc.cluster.local",
+	}
+	p.upstreams[ups.Name] = ups
 
-	uset := p.processClusterLoadAssignmentV3(&opaque)
-	assert.Len(t, uset, 1)
-	assert.Len(t, uset[0].Nodes, 2)
-	assert.Equal(t, uset[0].Nodes[0].Host, "10.0.3.11")
-	assert.Equal(t, uset[0].Nodes[0].Port, int32(8000))
-	assert.Equal(t, uset[0].Nodes[0].Weight, int32(100))
+	ups, err = p.processClusterLoadAssignmentV3(&opaque)
+	assert.Nil(t, err)
+	assert.NotNil(t, ups)
+	assert.Len(t, ups.Nodes, 2)
+	assert.Equal(t, ups.Nodes[0].Host, "10.0.3.11")
+	assert.Equal(t, ups.Nodes[0].Port, int32(8000))
+	assert.Equal(t, ups.Nodes[0].Weight, int32(100))
 
-	assert.Equal(t, uset[0].Nodes[1].Host, "10.0.3.12")
-	assert.Equal(t, uset[0].Nodes[1].Port, int32(8000))
-	assert.Equal(t, uset[0].Nodes[1].Weight, int32(80))
+	assert.Equal(t, ups.Nodes[1].Host, "10.0.3.12")
+	assert.Equal(t, ups.Nodes[1].Port, int32(8000))
+	assert.Equal(t, ups.Nodes[1].Weight, int32(80))
 }

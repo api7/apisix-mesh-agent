@@ -23,6 +23,7 @@ import (
 	"github.com/api7/apisix-mesh-agent/pkg/config"
 	"github.com/api7/apisix-mesh-agent/pkg/id"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
+	"github.com/api7/apisix-mesh-agent/pkg/provisioner/util"
 	"github.com/api7/apisix-mesh-agent/pkg/types"
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
@@ -30,9 +31,9 @@ import (
 func TestFileProvisionerGenerateEvents(t *testing.T) {
 	p := &xdsFileProvisioner{
 		logger: log.DefaultLogger,
-		state:  make(map[string]*manifest),
+		state:  make(map[string]*util.Manifest),
 	}
-	rm := &manifest{
+	rm := &util.Manifest{
 		Routes: []*apisix.Route{
 			{
 				Id: "1",
@@ -57,9 +58,9 @@ func TestFileProvisionerGenerateEvents(t *testing.T) {
 	assert.Equal(t, events[0].Type, types.EventDelete)
 	assert.Equal(t, events[1].Tombstone, rm.Routes[1])
 	assert.Nil(t, events[1].Object)
-	assert.Equal(t, p.state["null"], (*manifest)(nil))
+	assert.Equal(t, p.state["null"], (*util.Manifest)(nil))
 
-	rmo := &manifest{
+	rmo := &util.Manifest{
 		Routes: []*apisix.Route{
 			{
 				Id:   "1",
@@ -183,7 +184,7 @@ func TestFileProvisionerGenerateEventsFromDiscoveryResponse(t *testing.T) {
 	p := &xdsFileProvisioner{
 		logger:        log.DefaultLogger,
 		v3Adaptor:     adaptor,
-		state:         make(map[string]*manifest),
+		state:         make(map[string]*util.Manifest),
 		upstreamCache: make(map[string]*apisix.Upstream),
 	}
 	events := p.generateEventsFromDiscoveryResponseV3("null", dr)

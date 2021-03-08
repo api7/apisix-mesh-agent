@@ -1,4 +1,4 @@
-package file
+package util
 
 import (
 	apisixutil "github.com/api7/apisix-mesh-agent/pkg/apisix"
@@ -6,19 +6,18 @@ import (
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
 
-type manifest struct {
-	// Fields are named to be exportable so they can
-	// be shown by logger.
+// Manifest collects a couples Routes, Upstreams.
+type Manifest struct {
 	Routes    []*apisix.Route
 	Upstreams []*apisix.Upstream
 }
 
-// diffFrom checks the difference between m and m2 from m's point of view.
-func (m *manifest) diffFrom(m2 *manifest) (*manifest, *manifest, *manifest) {
+// DiffFrom checks the difference between m and m2 from m's point of view.
+func (m *Manifest) DiffFrom(m2 *Manifest) (*Manifest, *Manifest, *Manifest) {
 	var (
-		added   manifest
-		updated manifest
-		deleted manifest
+		added   Manifest
+		updated Manifest
+		deleted Manifest
 	)
 
 	a, d, u := apisixutil.CompareRoutes(m.Routes, m2.Routes)
@@ -34,11 +33,13 @@ func (m *manifest) diffFrom(m2 *manifest) (*manifest, *manifest, *manifest) {
 	return &added, &deleted, &updated
 }
 
-func (m *manifest) size() int {
+// Size calculates the number of resources in the manifest.
+func (m *Manifest) Size() int {
 	return len(m.Upstreams) + len(m.Routes)
 }
 
-func (m *manifest) events(evType types.EventType) []types.Event {
+// Events generates events according to its collection.
+func (m *Manifest) Events(evType types.EventType) []types.Event {
 	var events []types.Event
 	for _, r := range m.Routes {
 		if evType == types.EventDelete {

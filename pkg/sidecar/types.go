@@ -6,21 +6,22 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/api7/apisix-mesh-agent/pkg/etcdv3"
-
 	"go.uber.org/zap"
 
 	"github.com/api7/apisix-mesh-agent/pkg/cache"
 	"github.com/api7/apisix-mesh-agent/pkg/config"
+	"github.com/api7/apisix-mesh-agent/pkg/etcdv3"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
 	"github.com/api7/apisix-mesh-agent/pkg/provisioner"
 	xdsv3file "github.com/api7/apisix-mesh-agent/pkg/provisioner/xds/v3/file"
+	xdsv3grpc "github.com/api7/apisix-mesh-agent/pkg/provisioner/xds/v3/grpc"
 	"github.com/api7/apisix-mesh-agent/pkg/types"
 )
 
 // Sidecar is the entity to joint provisioner, cache, etcd and launch
 // the program.
 type Sidecar struct {
+	runId        string
 	logger       *log.Logger
 	provisioner  provisioner.Provisioner
 	cache        cache.Cache
@@ -49,6 +50,7 @@ func NewSidecar(cfg *config.Config) (*Sidecar, error) {
 		return nil, err
 	}
 	s := &Sidecar{
+		runId:        cfg.RunId,
 		grpcListener: li,
 		logger:       logger,
 		provisioner:  p,
@@ -64,7 +66,9 @@ func NewSidecar(cfg *config.Config) (*Sidecar, error) {
 
 // Run runs the sidecar program.
 func (s *Sidecar) Run(stop chan struct{}) error {
-	s.logger.Info("sidecar started")
+	s.logger.Infow("sidecar started",
+		zap.String("id", s.runId),
+	)
 	defer s.logger.Info("sidecar exited")
 
 	go func() {
@@ -131,6 +135,8 @@ func newProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
 	switch cfg.Provisioner {
 	case config.XDSV3FileProvisioner:
 		return xdsv3file.NewXDSProvisioner(cfg)
+	case config.XDSV3GRPCProvisioner:
+		return xdsv3grpc.NewXDSProvisioner(cfg)
 	default:
 		return nil, config.ErrUnknownProvisioner
 	}

@@ -52,6 +52,9 @@ func NewCommand() *cobra.Command {
 		Short: "Launch apisix-mesh-agent as a sidecar process",
 		Run: func(cmd *cobra.Command, args []string) {
 			initializeDefaultLogger(cfg)
+			if err := cfg.Validate(); err != nil {
+				dief("configuration validation failure: %s", err)
+			}
 			log.Infow("apisix-mesh-agent started")
 			defer log.Info("apisix-mesh-agent exited")
 			log.Info("version:\n", version.String())
@@ -63,7 +66,7 @@ func NewCommand() *cobra.Command {
 
 			sc, err := sidecar.NewSidecar(cfg)
 			if err != nil {
-				dief("failed to initialize: %s", err)
+				dief("initialization failure: %s", err)
 			}
 
 			stop := make(chan struct{})
@@ -79,9 +82,10 @@ func NewCommand() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(&cfg.LogOutput, "log-output", "stderr", "the output file path of error log")
 	cmd.PersistentFlags().StringVar(&cfg.LogLevel, "log-level", "info", "the error log level")
-	cmd.PersistentFlags().StringVar(&cfg.Provisioner, "provisioner", config.XDSV3FileProvisioner, "the provisioner to use, option can be \"xds-v3-file\"")
+	cmd.PersistentFlags().StringVar(&cfg.Provisioner, "provisioner", config.XDSV3FileProvisioner, "the provisioner to use, option can be \"xds-v3-file\", \"xds-v3-grpc\"")
 	cmd.PersistentFlags().StringSliceVar(&cfg.XDSWatchFiles, "xds-watch-files", nil, "file paths watched by xds-v3-file provisioner")
 	cmd.PersistentFlags().StringVar(&cfg.GRPCListen, "grpc-listen", config.DefaultGRPCListen, "grpc server listen address")
 	cmd.PersistentFlags().StringVar(&cfg.EtcdKeyPrefix, "etcd-key-prefix", config.DefaultEtcdKeyPrefix, "the key prefix in the mimicking etcd v3 server")
+	cmd.PersistentFlags().StringVar(&cfg.XDSConfigSource, "xds-config-source", "", "the xds config source address, required if provisioner is \"xds-v3-grpc\"")
 	return cmd
 }
