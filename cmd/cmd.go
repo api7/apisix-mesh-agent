@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/api7/apisix-mesh-agent/cmd/iptables"
 	"github.com/api7/apisix-mesh-agent/cmd/sidecar"
 	"github.com/api7/apisix-mesh-agent/cmd/version"
 )
@@ -16,6 +17,8 @@ func NewMeshAgentCommand() *cobra.Command {
 	cmd.AddCommand(
 		sidecar.NewCommand(),
 		version.NewCommand(),
+		iptables.NewSetupCommand(),
+		iptables.NewCleanupIptablesCommand(),
 	)
 	return cmd
 }
