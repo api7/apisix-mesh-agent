@@ -1,4 +1,4 @@
-package file
+package util
 
 import (
 	"testing"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestManifestSize(t *testing.T) {
-	m := &manifest{
+	m := &Manifest{
 		Routes: []*apisix.Route{
 			{}, {},
 		},
@@ -18,11 +18,11 @@ func TestManifestSize(t *testing.T) {
 			{}, {},
 		},
 	}
-	assert.Equal(t, m.size(), 4)
+	assert.Equal(t, m.Size(), 4)
 }
 
 func TestManifestEvents(t *testing.T) {
-	m := &manifest{
+	m := &Manifest{
 		Routes: []*apisix.Route{
 			{}, {},
 		},
@@ -30,19 +30,19 @@ func TestManifestEvents(t *testing.T) {
 			{}, {},
 		},
 	}
-	evs := m.events(types.EventAdd)
+	evs := m.Events(types.EventAdd)
 	assert.Len(t, evs, 4)
 	assert.NotNil(t, evs[0].Object)
 	assert.Nil(t, evs[0].Tombstone)
 	assert.Equal(t, evs[0].Type, types.EventAdd)
 
-	evs = m.events(types.EventUpdate)
+	evs = m.Events(types.EventUpdate)
 	assert.Len(t, evs, 4)
 	assert.NotNil(t, evs[0].Object)
 	assert.Nil(t, evs[0].Tombstone)
 	assert.Equal(t, evs[0].Type, types.EventUpdate)
 
-	evs = m.events(types.EventDelete)
+	evs = m.Events(types.EventDelete)
 	assert.Len(t, evs, 4)
 	assert.Nil(t, evs[0].Object)
 	assert.NotNil(t, evs[0].Tombstone)
@@ -50,7 +50,7 @@ func TestManifestEvents(t *testing.T) {
 }
 
 func TestManifestDiffFrom(t *testing.T) {
-	m := &manifest{
+	m := &Manifest{
 		Routes: []*apisix.Route{
 			{
 				Id: "1",
@@ -68,7 +68,7 @@ func TestManifestDiffFrom(t *testing.T) {
 			},
 		},
 	}
-	m2 := &manifest{
+	m2 := &Manifest{
 		Routes: []*apisix.Route{
 			{
 				Id:   "2",
@@ -84,15 +84,15 @@ func TestManifestDiffFrom(t *testing.T) {
 			},
 		},
 	}
-	a, d, u := m.diffFrom(m2)
-	assert.Equal(t, a.size(), 1)
+	a, d, u := m.DiffFrom(m2)
+	assert.Equal(t, a.Size(), 1)
 	assert.Equal(t, a.Routes[0].Id, "3")
 
-	assert.Equal(t, d.size(), 2)
+	assert.Equal(t, d.Size(), 2)
 	assert.Equal(t, d.Routes[0].Id, "1")
 	assert.Equal(t, d.Upstreams[0].Id, "2")
 
-	assert.Equal(t, u.size(), 1)
+	assert.Equal(t, u.Size(), 1)
 	assert.Equal(t, u.Routes[0].Id, "2")
 	assert.Equal(t, u.Routes[0].Uris, []string{"/foo"})
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/api7/apisix-mesh-agent/pkg/config"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
 	"github.com/api7/apisix-mesh-agent/pkg/provisioner"
+	"github.com/api7/apisix-mesh-agent/pkg/provisioner/util"
 	"github.com/api7/apisix-mesh-agent/pkg/types"
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
@@ -26,7 +27,7 @@ type xdsFileProvisioner struct {
 	evChan                  chan []types.Event
 	v3Adaptor               xdsv3.Adaptor
 	files                   []string
-	state                   map[string]*manifest
+	state                   map[string]*util.Manifest
 	upstreamCache           map[string]*apisix.Upstream
 	updatedUpstreamsFromEDS map[string][]*apisix.Upstream
 }
@@ -64,7 +65,7 @@ func NewXDSProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
 		v3Adaptor:               adaptor,
 		evChan:                  make(chan []types.Event),
 		files:                   cfg.XDSWatchFiles,
-		state:                   make(map[string]*manifest),
+		state:                   make(map[string]*util.Manifest),
 		upstreamCache:           make(map[string]*apisix.Upstream),
 		updatedUpstreamsFromEDS: make(map[string][]*apisix.Upstream),
 	}
@@ -214,16 +215,16 @@ func (p *xdsFileProvisioner) generateEventsFromDiscoveryResponseV3(filename stri
 		zap.Any("content", dr),
 	)
 	var (
-		rm               manifest
+		rm               util.Manifest
 		updatedUpstreams []*apisix.Upstream
 	)
 	for _, res := range dr.GetResources() {
 		switch res.GetTypeUrl() {
-		case "type.googleapis.com/envoy.config.route.v3.RouteConfiguration":
+		case types.RouteConfigurationUrl:
 			rm.Routes = append(rm.Routes, p.processRouteConfigurationV3(res)...)
-		case "type.googleapis.com/envoy.config.cluster.v3.Cluster":
+		case types.ClusterUrl:
 			rm.Upstreams = append(rm.Upstreams, p.processClusterV3(res)...)
-		case "type.googleapis.com/envoy.config.endpoint.v3.ClusterLoadAssignment":
+		case types.ClusterLoadAssignmentUrl:
 			var slot int
 			ups := p.processClusterLoadAssignmentV3(res)
 			for i := 0; i < len(ups); i++ {
@@ -281,18 +282,18 @@ func (p *xdsFileProvisioner) generateEventsFromDiscoveryResponseV3(filename stri
 	return evs
 }
 
-func (p *xdsFileProvisioner) generateEvents(filename string, rmo, rm *manifest) []types.Event {
+func (p *xdsFileProvisioner) generateEvents(filename string, rmo, rm *util.Manifest) []types.Event {
 	var (
-		added   *manifest
-		deleted *manifest
-		updated *manifest
+		added   *util.Manifest
+		deleted *util.Manifest
+		updated *util.Manifest
 	)
 	if rmo == nil {
 		added = rm
 	} else if rm == nil {
 		deleted = rmo
 	} else {
-		added, deleted, updated = rmo.diffFrom(rm)
+		added, deleted, updated = rmo.DiffFrom(rm)
 	}
 	p.logger.Debugw("found changes (after converting to APISIX resources) in xds file",
 		zap.String("filename", filename),
@@ -304,26 +305,26 @@ func (p *xdsFileProvisioner) generateEvents(filename string, rmo, rm *manifest) 
 
 	var count int
 	if added != nil {
-		count += added.size()
+		count += added.Size()
 	}
 	if deleted != nil {
-		count += deleted.size()
+		count += deleted.Size()
 	}
 	if updated != nil {
-		count += updated.size()
+		count += updated.Size()
 	}
 	if count == 0 {
 		return nil
 	}
 	events := make([]types.Event, 0, count)
 	if added != nil {
-		events = append(events, added.events(types.EventAdd)...)
+		events = append(events, added.Events(types.EventAdd)...)
 	}
 	if deleted != nil {
-		events = append(events, deleted.events(types.EventDelete)...)
+		events = append(events, deleted.Events(types.EventDelete)...)
 	}
 	if updated != nil {
-		events = append(events, updated.events(types.EventUpdate)...)
+		events = append(events, updated.Events(types.EventUpdate)...)
 	}
 	return events
 }
