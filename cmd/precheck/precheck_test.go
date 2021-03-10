@@ -43,8 +43,10 @@ func TestCheckHome(t *testing.T) {
 func TestCheckIptables(t *testing.T) {
 	var buffer strings.Builder
 
+	_iptablesCmd = "not_a_command"
+
 	assert.Equal(t, checkIptables(&buffer), false)
-	expect := "checking iptables, table: nat, chain: APISIX_INBOUND ... exec: \"iptables\": executable file not found in $PATH\n"
+	expect := "checking iptables, table: nat, chain: APISIX_INBOUND ... exec: \"not_a_command\": executable file not found in $PATH\n"
 	assert.Equal(t, expect, buffer.String())
 
 	_iptablesCmd = "true"
