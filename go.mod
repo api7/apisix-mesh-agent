@@ -1,6 +1,6 @@
 module github.com/api7/apisix-mesh-agent
 
-go 1.14
+go 1.16
 
 require (
 	github.com/envoyproxy/go-control-plane v0.9.9-0.20210115003313-31f9241a16e6

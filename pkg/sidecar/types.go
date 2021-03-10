@@ -113,7 +113,7 @@ func (s *Sidecar) Run(stop chan struct{}) error {
 	if s.apisixRunner != nil {
 		// Launch Apache APISIX after the main logic of apisix-mesh-agent was started,
 		// so that once APISIX started, it can fetch configuration from apisix-mesh-agent.
-		if err := s.apisixRunner.run(stop); err != nil {
+		if err := s.apisixRunner.run(); err != nil {
 			return err
 		}
 	}

@@ -1,6 +1,7 @@
 package sidecar
 
 import (
+	_ "embed"
 	"os"
 	"os/exec"
 	"syscall"
@@ -11,6 +12,11 @@ import (
 	"github.com/api7/apisix-mesh-agent/pkg/log"
 )
 
+var (
+	//go:embed apisix/config.yaml
+	_configYaml string
+)
+
 type apisixRunner struct {
 	home    string
 	bin     string
@@ -19,7 +25,7 @@ type apisixRunner struct {
 	process *os.Process
 }
 
-func (ar *apisixRunner) run(stop chan struct{}) error {
+func (ar *apisixRunner) run() error {
 	errCh := make(chan error)
 	cmd := exec.Command(ar.bin, "start")
 	go func() {
