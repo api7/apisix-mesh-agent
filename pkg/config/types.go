@@ -13,6 +13,15 @@ const (
 	XDSV3FileProvisioner = "xds-v3-file"
 	// XDSV3GRPCProvisioner means to use the xds v3 grpc provisioner.
 	XDSV3GRPCProvisioner = "xds-v3-grpc"
+
+	// StandaloneMode means run apisix-mesh-agent standalone.
+	StandaloneMode = "standalone"
+	// BundleMode means run apisix-mesh-agent and apisix.
+	BundleMode = "bundle"
+	// DefaultAPISIXHomePath is the default home path for Apache APISIX.
+	DefaultAPISIXHomePath = "/usr/local/apisix"
+	// DefaultAPISIXBinPath is the default binary path for Apache APISIX.
+	DefaultAPISIXBinPath = "/usr/local/bin/apisix"
 )
 
 var (
@@ -49,18 +58,31 @@ type Config struct {
 	GRPCListen string `json:"grpc_listen" yaml:"grpc_listen"`
 	// The key prefix in the mimicking etcd v3 server.
 	EtcdKeyPrefix string `json:"etcd_key_prefix" yaml:"etcd_key_prefix"`
+	// THe running mode of apisix-mesh-agent, can be:
+	// 1. standalone - only launch apisix-mesh-agent
+	// 2. bundle - launch apisix-mesh-agent and apisix, in such case,
+	// correct apisix home path and bin path should be configured.
+	// And when you shutdown apisix-mesh-agent, APISIX will also be closed.
+	RunMode string `json:"run_mode" yaml:"run_mode"`
+	// The home path of Apache APISIX.
+	APISIXHomePath string `json:"apisix_home_path" yaml:"apisix_home_path"`
+	// The executable binary path of Apache APISIX.
+	APISIXBinPath string `json:"apisix_bin_path" yaml:"apisix_bin_path"`
 }
 
 // NewDefaultConfig returns a Config object with all items filled by
 // their default values.
 func NewDefaultConfig() *Config {
 	return &Config{
-		RunId:         uuid.NewString(),
-		LogLevel:      "info",
-		LogOutput:     "stderr",
-		Provisioner:   XDSV3FileProvisioner,
-		GRPCListen:    DefaultGRPCListen,
-		EtcdKeyPrefix: DefaultEtcdKeyPrefix,
+		RunId:          uuid.NewString(),
+		LogLevel:       "info",
+		LogOutput:      "stderr",
+		Provisioner:    XDSV3FileProvisioner,
+		GRPCListen:     DefaultGRPCListen,
+		EtcdKeyPrefix:  DefaultEtcdKeyPrefix,
+		APISIXHomePath: DefaultAPISIXHomePath,
+		APISIXBinPath:  DefaultAPISIXBinPath,
+		RunMode:        StandaloneMode,
 	}
 }
 
