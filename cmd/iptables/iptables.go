@@ -21,8 +21,18 @@ type iptablesConstructor struct {
 func NewSetupCommand() *cobra.Command {
 	var cfg config.Config
 	cmd := &cobra.Command{
-		Use:   "iptables [flags]",
-		Short: "Setting up iptables rules for port forwarding",
+		Use: "iptables [flags]",
+		Long: `Setting up iptables rules for port forwarding.
+
+Intercept inbound TCP traffic which destination port is 80 to 9080 (apisix port), run:
+	apisix-mesh-agent iptables --apisix-port 9080 --inbound-ports 80
+
+To intercep all inbound TCP traffic, just use "*" as the value of --inbound-ports option. In addition,
+if outbound TCP traffic (say the destination port is 80) is desired to be intercepted, just run:
+	apisix-mesh-agent iptables --apisix-port 9080 --inbound-ports 80 --outbound-ports 80
+
+--dry-run option can be specified if you just want to see which rules will be generated (but no effects).
+`,
 		Run: func(cmd *cobra.Command, args []string) {
 			var dep dependencies.Dependencies
 			if cfg.DryRun {
