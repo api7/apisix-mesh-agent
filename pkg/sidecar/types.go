@@ -3,6 +3,7 @@ package sidecar
 import (
 	"context"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -29,6 +30,7 @@ type Sidecar struct {
 	etcdSrv      etcdv3.EtcdV3
 	revision     int64
 	apisixRunner *apisixRunner
+	waitGroup    sync.WaitGroup
 }
 
 // NewSidecar creates a Sidecar object.
@@ -98,6 +100,8 @@ func (s *Sidecar) Run(stop chan struct{}) error {
 	}()
 
 	go func() {
+		s.waitGroup.Add(1)
+		defer s.waitGroup.Done()
 		if err := s.etcdSrv.Serve(s.grpcListener); err != nil {
 			s.logger.Fatalw("etcd v3 server run failed",
 				zap.Error(err),
@@ -117,6 +121,7 @@ func (s *Sidecar) Run(stop chan struct{}) error {
 	}()
 
 	if s.apisixRunner != nil {
+		s.waitGroup.Add(1)
 		// Launch Apache APISIX after the main logic of apisix-mesh-agent was started,
 		// so that once APISIX started, it can fetch configuration from apisix-mesh-agent.
 		if err := s.apisixRunner.run(); err != nil {
@@ -140,8 +145,10 @@ loop:
 
 	if s.apisixRunner != nil {
 		s.apisixRunner.shutdown()
+		s.waitGroup.Done()
 	}
 
+	s.waitGroup.Wait()
 	return nil
 }
 

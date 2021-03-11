@@ -70,13 +70,10 @@ func NewCommand() *cobra.Command {
 			}
 
 			stop := make(chan struct{})
-			go func() {
-				if err := sc.Run(stop); err != nil {
-					dief(err.Error())
-				}
-			}()
-
-			waitForSignal(stop)
+			go waitForSignal(stop)
+			if err := sc.Run(stop); err != nil {
+				dief(err.Error())
+			}
 		},
 	}
 
