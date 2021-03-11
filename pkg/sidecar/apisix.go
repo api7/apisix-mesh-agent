@@ -54,7 +54,7 @@ func (ar *apisixRunner) run(wg *sync.WaitGroup) error {
 		cmd.Stderr = stderr
 		cmd.Stdout = stdout
 		if err := cmd.Run(); err != nil {
-			ar.logger.Fatalw("apisix running failure",
+			ar.logger.Warnw("apisix running failure",
 				zap.Error(err),
 				zap.String("bin", ar.bin),
 				zap.String("stderr", stderr.String()),
