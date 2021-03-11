@@ -105,7 +105,6 @@ plugins:                          # plugin list (sorted in alphabetical order)
   # - node-status
   - openid-connect
   - prometheus
-  - proxy-cache
   - proxy-mirror
   - proxy-rewrite
   - redirect
