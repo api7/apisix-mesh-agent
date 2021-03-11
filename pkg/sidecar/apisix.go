@@ -96,6 +96,7 @@ func (ar *apisixRunner) shutdown() {
 	if err := ar.process.Signal(syscall.SIGINT); err != nil {
 		ar.logger.Fatalw("failed to send SIGINT signal to apisix master process",
 			zap.Int("master_pid", ar.process.Pid),
+			zap.Error(err),
 		)
 	}
 }
