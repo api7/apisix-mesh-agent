@@ -32,7 +32,7 @@ type EtcdV3 interface {
 	Serve(net.Listener) error
 	// Shutdown closes the ETCD v3 server.
 	Shutdown(context.Context) error
-	// PushEvents accepts a bunch of events and converts them to ETCD events,
+	// PushEventsETCD events,
 	// then sending to watch clients.
 	PushEvents([]types.Event)
 }
@@ -150,7 +150,7 @@ func (e *etcdV3) Serve(listener net.Listener) error {
 		}
 	}()
 
-	if err := m.Serve(); err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
+	if err := m.Serve(); err != nil && !reasonableFailure(err) {
 		return err
 	}
 
@@ -309,4 +309,17 @@ func (e *etcdV3) registerGateway(addr string) (*gatewayruntime.ServeMux, error) 
 		}
 	}()
 	return gwmux, nil
+}
+
+func reasonableFailure(err error) bool {
+	if err == http.ErrServerClosed {
+		return true
+	}
+	if strings.Contains(err.Error(), "mux: listener closed") {
+		return true
+	}
+	if strings.Contains(err.Error(), "use of closed network connection") {
+		return true
+	}
+	return false
 }
