@@ -55,6 +55,8 @@ func (ar *apisixRunner) run() error {
 				zap.String("stderr", stderr.String()),
 			)
 			errCh <- err
+		} else {
+			ar.logger.Infow("apisix exited")
 		}
 	}()
 	select {

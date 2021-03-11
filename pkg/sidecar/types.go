@@ -99,8 +99,8 @@ func (s *Sidecar) Run(stop chan struct{}) error {
 		}
 	}()
 
+	s.waitGroup.Add(1)
 	go func() {
-		s.waitGroup.Add(1)
 		defer s.waitGroup.Done()
 		if err := s.etcdSrv.Serve(s.grpcListener); err != nil {
 			s.logger.Fatalw("etcd v3 server run failed",
@@ -109,16 +109,6 @@ func (s *Sidecar) Run(stop chan struct{}) error {
 		}
 	}()
 	time.Sleep(time.Second)
-
-	defer func() {
-		shutCtx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
-		if err := s.etcdSrv.Shutdown(shutCtx); err != nil {
-			s.logger.Errorw("failed to shutdown etcd server",
-				zap.Error(err),
-			)
-		}
-		cancel()
-	}()
 
 	if s.apisixRunner != nil {
 		s.waitGroup.Add(1)
@@ -148,7 +138,14 @@ loop:
 		s.waitGroup.Done()
 	}
 
-	s.waitGroup.Wait()
+	shutCtx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+	if err := s.etcdSrv.Shutdown(shutCtx); err != nil {
+		s.logger.Errorw("failed to shutdown etcd server",
+			zap.Error(err),
+		)
+	}
+
 	return nil
 }
 
