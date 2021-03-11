@@ -6,9 +6,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/api7/apisix-mesh-agent/pkg/log"
-
 	"github.com/stretchr/testify/assert"
+
+	"github.com/api7/apisix-mesh-agent/pkg/log"
 )
 
 func TestConfigRender(t *testing.T) {

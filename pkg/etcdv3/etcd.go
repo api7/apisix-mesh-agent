@@ -32,7 +32,7 @@ type EtcdV3 interface {
 	Serve(net.Listener) error
 	// Shutdown closes the ETCD v3 server.
 	Shutdown(context.Context) error
-	// PushEventsETCD events,
+	// PushEvents accepts a bunch of events and converts them to ETCD events,
 	// then sending to watch clients.
 	PushEvents([]types.Event)
 }
