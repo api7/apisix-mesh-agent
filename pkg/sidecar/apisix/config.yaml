@@ -39,7 +39,7 @@ apisix:
 
 nginx_config:                     # config for render the template to generate nginx.conf
   error_log: "logs/error.log"
-  error_log_level: "warn"         # warn,error
+  error_log_level: "error"        # warn,error
   worker_processes: auto          # one worker will get best performance, you can use "auto", but remember it is just work well only on physical machine
     # no more than 8 workers, otherwise competition between workers will consume a lot of resources
   # if you want use multiple cores in container, you can inject the number of cpu as environment variable "APISIX_WORKER_PROCESSES"
