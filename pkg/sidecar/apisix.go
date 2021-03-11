@@ -44,7 +44,7 @@ func (ar *apisixRunner) run(wg *sync.WaitGroup) error {
 		return err
 	}
 
-	errCh := make(chan error)
+	errCh := make(chan error, 1)
 	cmd := exec.Command(ar.bin, ar.runArgs...)
 	wg.Add(1)
 	go func() {
