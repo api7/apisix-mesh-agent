@@ -135,7 +135,6 @@ loop:
 
 	if s.apisixRunner != nil {
 		s.apisixRunner.shutdown()
-		s.waitGroup.Done()
 	}
 
 	shutCtx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
