@@ -3,6 +3,7 @@ package sidecar
 import (
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/api7/apisix-mesh-agent/pkg/log"
@@ -52,7 +53,8 @@ func TestApisixRunner(t *testing.T) {
 		home:    "./testdata",
 		bin:     "sleep",
 	}
-	assert.Nil(t, ar.run())
+	var wg sync.WaitGroup
+	assert.Nil(t, ar.run(&wg))
 	pid := ar.process.Pid
 	assert.NotEqual(t, pid, 0)
 	ar.shutdown()

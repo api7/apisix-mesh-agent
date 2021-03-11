@@ -112,10 +112,9 @@ func (s *Sidecar) Run(stop chan struct{}) error {
 	time.Sleep(time.Second)
 
 	if s.apisixRunner != nil {
-		s.waitGroup.Add(1)
 		// Launch Apache APISIX after the main logic of apisix-mesh-agent was started,
 		// so that once APISIX started, it can fetch configuration from apisix-mesh-agent.
-		if err := s.apisixRunner.run(); err != nil {
+		if err := s.apisixRunner.run(&s.waitGroup); err != nil {
 			return err
 		}
 	}
@@ -147,6 +146,7 @@ loop:
 		)
 	}
 
+	s.waitGroup.Wait()
 	return nil
 }
 

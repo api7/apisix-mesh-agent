@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"syscall"
 	"text/template"
 	"time"
@@ -38,14 +39,16 @@ type apisixConfig struct {
 	EtcdKeyPrefix string
 }
 
-func (ar *apisixRunner) run() error {
+func (ar *apisixRunner) run(wg *sync.WaitGroup) error {
 	if err := ar.renderConfig(); err != nil {
 		return err
 	}
 
 	errCh := make(chan error)
 	cmd := exec.Command(ar.bin, ar.runArgs...)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		stderr := bytes.NewBuffer(nil)
 		stdout := bytes.NewBuffer(nil)
 		cmd.Stderr = stderr
