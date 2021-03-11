@@ -4,7 +4,7 @@ apisix-mesh-agent
 Agent of [Apache APISIX](http://apisix.apache.org/) to extend it as a [Service
 Mesh](https://www.redhat.com/en/topics/microservices/what-is-a-service-mesh) Sidecar.
 
-![apisix-mesh-agent](./docs/images/data-plane-overview.png)
+![apisix-mesh-overview](./docs/images/apisix-mesh-overview.png)
 
 Status
 ------
