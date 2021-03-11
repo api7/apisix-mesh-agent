@@ -56,10 +56,11 @@ func NewSidecar(cfg *config.Config) (*Sidecar, error) {
 	var ar *apisixRunner
 	if cfg.RunMode == config.BundleMode {
 		ar = &apisixRunner{
-			home:   cfg.APISIXHomePath,
-			bin:    cfg.APISIXBinPath,
-			done:   make(chan struct{}),
-			logger: logger,
+			home:    cfg.APISIXHomePath,
+			bin:     cfg.APISIXBinPath,
+			done:    make(chan struct{}),
+			logger:  logger,
+			runArgs: []string{"start"},
 			config: &apisixConfig{
 				NodeListen:    9080,
 				GRPCListen:    cfg.GRPCListen,
