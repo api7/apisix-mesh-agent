@@ -46,10 +46,13 @@ func (ar *apisixRunner) run() error {
 	errCh := make(chan error)
 	cmd := exec.Command(ar.bin, ar.runArgs...)
 	go func() {
+		stderr := bytes.NewBuffer(nil)
+		cmd.Stderr = stderr
 		if err := cmd.Run(); err != nil {
 			ar.logger.Fatalw("apisix running failure",
 				zap.Error(err),
 				zap.String("bin", ar.bin),
+				zap.String("stderr", stderr.String()),
 			)
 			errCh <- err
 		}
