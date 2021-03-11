@@ -58,8 +58,14 @@ func NewSidecar(cfg *config.Config) (*Sidecar, error) {
 			bin:    cfg.APISIXBinPath,
 			done:   make(chan struct{}),
 			logger: logger,
+			config: &apisixConfig{
+				NodeListen:    9080,
+				GRPCListen:    cfg.GRPCListen,
+				EtcdKeyPrefix: cfg.EtcdKeyPrefix,
+			},
 		}
 	}
+
 	s := &Sidecar{
 		runId:        cfg.RunId,
 		grpcListener: li,

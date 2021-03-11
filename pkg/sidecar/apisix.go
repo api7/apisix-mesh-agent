@@ -1,10 +1,14 @@
 package sidecar
 
 import (
+	"bytes"
 	_ "embed"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
+	"text/template"
 	"time"
 
 	"go.uber.org/zap"
@@ -18,16 +22,29 @@ var (
 )
 
 type apisixRunner struct {
+	config  *apisixConfig
 	home    string
 	bin     string
+	runArgs []string
 	logger  *log.Logger
 	done    chan struct{}
 	process *os.Process
 }
 
+type apisixConfig struct {
+	SSLPort       int
+	NodeListen    int
+	GRPCListen    string
+	EtcdKeyPrefix string
+}
+
 func (ar *apisixRunner) run() error {
+	if err := ar.renderConfig(); err != nil {
+		return err
+	}
+
 	errCh := make(chan error)
-	cmd := exec.Command(ar.bin, "start")
+	cmd := exec.Command(ar.bin, ar.runArgs...)
 	go func() {
 		if err := cmd.Run(); err != nil {
 			ar.logger.Fatalw("apisix running failure",
@@ -47,6 +64,22 @@ func (ar *apisixRunner) run() error {
 	ar.logger.Infow("launch apisix",
 		zap.Int("master_pid", cmd.Process.Pid),
 	)
+	return nil
+}
+
+func (ar *apisixRunner) renderConfig() error {
+	temp, err := template.New("apisix-config").Parse(_configYaml)
+	if err != nil {
+		return err
+	}
+	var output bytes.Buffer
+	if err := temp.Execute(&output, ar.config); err != nil {
+		return err
+	}
+	filename := filepath.Join(ar.home, "conf", "config-default.yaml")
+	if err := ioutil.WriteFile(filename, output.Bytes(), 0644); err != nil {
+		return err
+	}
 	return nil
 }
 
