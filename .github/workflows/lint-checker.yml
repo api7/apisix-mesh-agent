@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Download golangci-lint
         run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.37.0
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.38.0
           sudo cp ./bin/golangci-lint /usr/bin
       - name: Run Golang Linters
         working-directory: ./
