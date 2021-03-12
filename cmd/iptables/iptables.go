@@ -21,7 +21,8 @@ type iptablesConstructor struct {
 func NewSetupCommand() *cobra.Command {
 	var cfg config.Config
 	cmd := &cobra.Command{
-		Use: "iptables [flags]",
+		Use:   "iptables [flags]",
+		Short: "Setting up iptables rules for port forwarding",
 		Long: `Setting up iptables rules for port forwarding.
 
 Intercept inbound TCP traffic which destination port is 80 to 9080 (apisix port), run:
