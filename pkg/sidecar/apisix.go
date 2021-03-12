@@ -90,7 +90,7 @@ func (ar *apisixRunner) renderConfig() error {
 	if err := temp.Execute(&output, ar.config); err != nil {
 		return err
 	}
-	filename := filepath.Join(ar.home, "conf", "config-default.yaml")
+	filename := filepath.Join(ar.home, "conf", "config.yaml")
 	if err := ioutil.WriteFile(filename, output.Bytes(), 0644); err != nil {
 		return err
 	}
