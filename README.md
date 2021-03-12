@@ -23,6 +23,11 @@ The Design of APISIX Mesh
 
 See the [Design](./docs/design.md) for the details.
 
+How it Works
+-------------
+
+See [How it Works](./docs/how-it-works.md) to learn how apisix-mesh-agent extends Apache APISIX as a Service Mesh sidecar.
+
 The Internal of apisix-mesh-agent
 ---------------------------------
 

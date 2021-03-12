@@ -1,0 +1,14 @@
+apisix:
+  node_listen: {{ .NodeListen }}
+  enable_admin: false
+  ssl:
+    enable: false
+    listen_port: {{ .SSLPort }}
+nginx_config:                     # config for render the template to generate nginx.conf
+  main_configuration_snippet: |
+    daemon off;
+etcd:
+  host:
+    - "http://{{ .GRPCListen }}"     # multiple etcd address, if your etcd cluster enables TLS, please use https scheme,
+    # e.g. "https://127.0.0.1:2379".
+  prefix: "{{ .EtcdKeyPrefix }}"               # apisix configurations prefix

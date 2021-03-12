@@ -11,6 +11,12 @@ func TestNewDefaultConfig(t *testing.T) {
 	cfg := NewDefaultConfig()
 	assert.Equal(t, cfg.LogLevel, "info")
 	assert.Equal(t, cfg.LogOutput, "stderr")
+	assert.Equal(t, cfg.Provisioner, XDSV3FileProvisioner)
+	assert.Equal(t, cfg.GRPCListen, DefaultGRPCListen)
+	assert.Equal(t, cfg.EtcdKeyPrefix, DefaultEtcdKeyPrefix)
+	assert.Equal(t, cfg.APISIXHomePath, DefaultAPISIXHomePath)
+	assert.Equal(t, cfg.APISIXBinPath, DefaultAPISIXBinPath)
+	assert.Equal(t, cfg.RunMode, StandaloneMode)
 }
 
 func TestConfigValidate(t *testing.T) {

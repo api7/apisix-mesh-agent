@@ -3,6 +3,7 @@ package sidecar
 import (
 	"context"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -28,6 +29,8 @@ type Sidecar struct {
 	grpcListener net.Listener
 	etcdSrv      etcdv3.EtcdV3
 	revision     int64
+	apisixRunner *apisixRunner
+	waitGroup    sync.WaitGroup
 }
 
 // NewSidecar creates a Sidecar object.
@@ -49,12 +52,30 @@ func NewSidecar(cfg *config.Config) (*Sidecar, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	var ar *apisixRunner
+	if cfg.RunMode == config.BundleMode {
+		ar = &apisixRunner{
+			home:    cfg.APISIXHomePath,
+			bin:     cfg.APISIXBinPath,
+			done:    make(chan struct{}),
+			logger:  logger,
+			runArgs: []string{"start"},
+			config: &apisixConfig{
+				NodeListen:    9080,
+				GRPCListen:    cfg.GRPCListen,
+				EtcdKeyPrefix: cfg.EtcdKeyPrefix,
+			},
+		}
+	}
+
 	s := &Sidecar{
 		runId:        cfg.RunId,
 		grpcListener: li,
 		logger:       logger,
 		provisioner:  p,
 		cache:        cache.NewInMemoryCache(),
+		apisixRunner: ar,
 	}
 	etcd, err := etcdv3.NewEtcdV3Server(cfg, s.cache, s)
 	if err != nil {
@@ -79,23 +100,24 @@ func (s *Sidecar) Run(stop chan struct{}) error {
 		}
 	}()
 
+	s.waitGroup.Add(1)
 	go func() {
+		defer s.waitGroup.Done()
 		if err := s.etcdSrv.Serve(s.grpcListener); err != nil {
 			s.logger.Fatalw("etcd v3 server run failed",
 				zap.Error(err),
 			)
 		}
 	}()
+	time.Sleep(time.Second)
 
-	defer func() {
-		shutCtx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
-		if err := s.etcdSrv.Shutdown(shutCtx); err != nil {
-			s.logger.Errorw("failed to shutdown etcd server",
-				zap.Error(err),
-			)
+	if s.apisixRunner != nil {
+		// Launch Apache APISIX after the main logic of apisix-mesh-agent was started,
+		// so that once APISIX started, it can fetch configuration from apisix-mesh-agent.
+		if err := s.apisixRunner.run(&s.waitGroup); err != nil {
+			return err
 		}
-		cancel()
-	}()
+	}
 
 loop:
 	for {
@@ -111,6 +133,19 @@ loop:
 		// since it can receive the quit signal from the provisioner.
 	}
 
+	if s.apisixRunner != nil {
+		s.apisixRunner.shutdown()
+	}
+
+	shutCtx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+	if err := s.etcdSrv.Shutdown(shutCtx); err != nil {
+		s.logger.Errorw("failed to shutdown etcd server",
+			zap.Error(err),
+		)
+	}
+
+	s.waitGroup.Wait()
 	return nil
 }
 
