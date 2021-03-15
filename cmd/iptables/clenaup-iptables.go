@@ -33,7 +33,7 @@ func cleanup(dryRun bool) {
 func removeOldChains(ext dependencies.Dependencies, cmd string) {
 	ext.RunQuietlyAndIgnore(cmd, "-t", "nat", "-D", types.PreRoutingChain, "-p", "tcp", "-j", types.InboundChain)
 	ext.RunQuietlyAndIgnore(cmd, "-t", "nat", "-D", types.OutputChain, "-p", "tcp", "-j", types.OutputChain)
-	flushAndDeleteChains(ext, cmd, "nat", []string{types.InboundChain, types.OutputChain, types.RedirectChain})
+	flushAndDeleteChains(ext, cmd, "nat", []string{types.InboundChain, types.OutputChain, types.RedirectChain, types.InboundRedirectChain})
 }
 
 func flushAndDeleteChains(ext dependencies.Dependencies, cmd string, table string, chains []string) {

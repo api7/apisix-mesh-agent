@@ -31,6 +31,8 @@ iptables -t nat -F OUTPUT
 iptables -t nat -X OUTPUT
 iptables -t nat -F APISIX_REDIRECT
 iptables -t nat -X APISIX_REDIRECT
+iptables -t nat -F APISIX_INBOUND_REDIRECT
+iptables -t nat -X APISIX_INBOUND_REDIRECT
 `
 	assert.Equal(t, expect, string(data))
 }
