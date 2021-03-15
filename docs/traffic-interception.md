@@ -34,39 +34,51 @@ rules.
 1. Forward all inbound TCP traffic to port `9080`
 
 ```shell
-./apisix-mesh-agent iptables --apisix-port 9080 --dry-run
+./apisix-mesh-agent iptables --apisix-port 9080 --apisix-user alex --dry-run
 iptables -t nat -N APISIX_REDIRECT
 iptables -t nat -A APISIX_REDIRECT -p tcp -j REDIRECT --to-ports 9080
+iptables -t nat -A OUTPUT -o lo ! -d 127.0.0.1/32 -m owner --uid-owner 501 -j RETURN
+iptables -t nat -A OUTPUT -m owner --gid-owner 20 -j RETURN
 ```
+
+Note the `--uid-owner` and `--gid-owner` values might be different, it depends on which user you specified to run the proxy component. 
 
 2. Forward inbound TCP traffic to port `9080` if the original destination port is `80` or `443`
 
 ```shell
-./apisix-mesh-agent iptables --apisix-port 9080 --inbound-ports 80,443 --dry-run
+./apisix-mesh-agent iptables --apisix-port 9080 --inbound-ports 80,443 --apisix-user alex --dry-run
 iptables -t nat -N APISIX_REDIRECT
 iptables -t nat -N APISIX_INBOUND
 iptables -t nat -A APISIX_REDIRECT -p tcp -j REDIRECT --to-ports 9080
+iptables -t nat -A OUTPUT -o lo ! -d 127.0.0.1/32 -m owner --uid-owner 501 -j RETURN
+iptables -t nat -A OUTPUT -m owner --gid-owner 20 -j RETURN
 iptables -t nat -A PREROUTING -p tcp -j APISIX_INBOUND
 iptables -t nat -A APISIX_INBOUND -p tcp --dport 80 -j APISIX_REDIRECT
 iptables -t nat -A APISIX_INBOUND -p tcp --dport 443 -j APISIX_REDIRECT
 ```
 
+Note the `--uid-owner` and `--gid-owner` values might be different, it depends on which user you specified to run the proxy component.
+
 3. Forward outbound TCP to port `9080` if the original destination port is `80`
 
 ```shell
-./apisix-mesh-agent iptables --apisix-port 9080 --dry-run --outbound-ports 80 --dry-run
+./apisix-mesh-agent iptables --apisix-port 9080 --dry-run --outbound-ports 80 --apisix-user alex
 iptables -t nat -N APISIX_REDIRECT
 iptables -t nat -A APISIX_REDIRECT -p tcp -j REDIRECT --to-ports 9080
+iptables -t nat -A OUTPUT -o lo ! -d 127.0.0.1/32 -m owner --uid-owner 501 -j RETURN
+iptables -t nat -A OUTPUT -m owner --gid-owner 20 -j RETURN
 iptables -t nat -A OUTPUT -p tcp --dport 80 -j APISIX_REDIRECT
 ```
 
 4. Combination of 2 and 3
 
 ```shell
-apisix-mesh-agent iptables --apisix-port 9080 --inbound-ports 80,443 --outbound-ports 80 --dry-run
+./apisix-mesh-agent iptables --apisix-port 9080 --inbound-ports 80,443 --outbound-ports 80 --apisix-user alex --dry-run
 iptables -t nat -N APISIX_REDIRECT
 iptables -t nat -N APISIX_INBOUND
 iptables -t nat -A APISIX_REDIRECT -p tcp -j REDIRECT --to-ports 9080
+iptables -t nat -A OUTPUT -o lo ! -d 127.0.0.1/32 -m owner --uid-owner 501 -j RETURN
+iptables -t nat -A OUTPUT -m owner --gid-owner 20 -j RETURN
 iptables -t nat -A PREROUTING -p tcp -j APISIX_INBOUND
 iptables -t nat -A APISIX_INBOUND -p tcp --dport 80 -j APISIX_REDIRECT
 iptables -t nat -A APISIX_INBOUND -p tcp --dport 443 -j APISIX_REDIRECT
