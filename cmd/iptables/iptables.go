@@ -79,9 +79,10 @@ func (ic *iptablesConstructor) run() {
 	ic.iptables.AppendRuleV4(
 		types.RedirectChain, "nat", "-p", "tcp", "-j", "REDIRECT", "--to-ports", ic.cfg.ProxyPort,
 	)
+	// Should first insert these skipping rules.
+	ic.insertSkipRules()
 	ic.insertInboundRules()
 	ic.insertOutboundRules()
-	ic.insertSkipRules()
 	ic.executeCommand()
 }
 
