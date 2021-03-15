@@ -29,7 +29,7 @@ func TestConfigRender(t *testing.T) {
 	err := ar.renderConfig()
 	assert.Nil(t, err)
 
-	data, err := ioutil.ReadFile("./testdata/conf/config-default.yaml")
+	data, err := ioutil.ReadFile("./testdata/conf/config.yaml")
 	assert.Nil(t, err)
 	assert.Contains(t, string(data), "node_listen: 9080")
 	assert.Contains(t, string(data), "prefix: \"/apisix\"")
