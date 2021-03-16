@@ -12,9 +12,9 @@ ARG ENABLE_PROXY=false
 ARG LUAROCKS_VERSION="3.4.0"
 ARG RESTY_IMAGE_BASE="alpine"
 ARG RESTY_IMAGE_TAG="3.12"
-ARG RESTY_VERSION="1.17.8.2"
+ARG RESTY_VERSION="1.19.3.1"
 ARG RESTY_OPENSSL_VERSION="1.1.1g"
-ARG RESTY_NGINX_VERSION="1.17.8"
+ARG RESTY_NGINX_VERSION="1.19.3"
 ARG RESTY_OPENSSL_PATCH_VERSION="1.1.1f"
 ARG RESTY_OPENSSL_URL_BASE="https://www.openssl.org/source"
 ARG RESTY_PCRE_VERSION="8.44"
@@ -150,9 +150,6 @@ RUN apk add --no-cache --virtual .build-deps \
 # Add additional binaries into PATH for convenience
 ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
 
-# Copy nginx configuration files
-COPY /nginx/nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
-
 # Step2 , building LuaRocks
 RUN cd /tmp \
     && wget https://github.com/luarocks/luarocks/archive/v3.4.0.tar.gz \
@@ -183,16 +180,17 @@ RUN set -x \
     && (if [ "$APISIX_VERSION" = "master" ] || [ "$APISIX_VERSION" \> "2.2" ]; then echo 'use shell ';else bin='#! /usr/local/openresty/luajit/bin/luajit\npackage.path = "/usr/local/apisix/?.lua;" .. package.path'; sed -i "1s@.*@$bin@" /usr/bin/apisix ; fi;) \
     && mv /usr/local/apisix/deps/share/lua/5.1/apisix /usr/local/apisix
 
-FROM golang:1.16.2 as agent-build-stage
+FROM golang:alpine3.13 as agent-build-stage
 
 # Step 4, building apisix-mesh-agent
 LABEL apisix_mesh_agent_version="${APISIX_MESH_AGENT_VERSION}"
 COPY . /apisix-mesh-agent
-RUN cd /apisix-mesh-agent && GOPROXY=https://goproxy.cn,direct make build
+RUN apk add --no-cache --virtual .builddeps make \
+    && cd /apisix-mesh-agent && GOPROXY=https://goproxy.cn,direct make build
 
-FROM centos:centos7
+FROM alpine:3.2
 
-RUN yum -y install iptables which
+RUN apk add --no-cache --virtual .builddeps iptables
 
 COPY --from=proxy-build-stage /usr/local/openresty /usr/local/openresty
 COPY --from=proxy-build-stage /usr/bin/apisix /usr/bin/apisix

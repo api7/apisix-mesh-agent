@@ -1,5 +1,5 @@
 diff --git a/src/http/ngx_http_variables.c b/src/http/ngx_http_variables.c
-index e067cf0c..91e93e8b 100644
+index e067cf0c..39fcace7 100644
 --- a/src/http/ngx_http_variables.c
 +++ b/src/http/ngx_http_variables.c
 @@ -129,6 +129,8 @@ static ngx_int_t ngx_http_variable_connection(ngx_http_request_t *r,
@@ -21,7 +21,7 @@ index e067cf0c..91e93e8b 100644
      { ngx_string("nginx_version"), NULL, ngx_http_variable_nginx_version,
        0, 0, 0 },
  
-@@ -2252,6 +2257,36 @@ ngx_http_variable_connection_requests(ngx_http_request_t *r,
+@@ -2252,6 +2257,39 @@ ngx_http_variable_connection_requests(ngx_http_request_t *r,
  }
  
  
@@ -43,6 +43,9 @@ index e067cf0c..91e93e8b 100644
 +    }
 +
 +    p = ngx_pnalloc(r->pool, NGX_SOCKADDR_STRLEN);
++    if (p == NULL) {
++        return NGX_ERROR;
++    }
 +
 +    v->len = ngx_sock_ntop((struct sockaddr *) &dst, socklen, p,
 +                           NGX_SOCKADDR_STRLEN, dst.sin_port);
