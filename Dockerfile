@@ -190,7 +190,10 @@ RUN apk add --no-cache --virtual .builddeps make \
 
 FROM alpine:3.2
 
-RUN apk add --no-cache --virtual .builddeps iptables
+RUN apk add --no-cache --virtual .builddeps \
+    iptables \
+    bash \
+    libstdc++
 
 COPY --from=proxy-build-stage /usr/local/openresty /usr/local/openresty
 COPY --from=proxy-build-stage /usr/bin/apisix /usr/bin/apisix
