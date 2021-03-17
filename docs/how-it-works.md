@@ -25,3 +25,9 @@ will launch the Apache APISIX and close it when you shut apisix-mesh-agent down.
 
 You should pass the correct Apache APISIX binary path and home path, apisix-mesh-agent render [a configuration file](../pkg/sidecar/apisix/config.yaml) for it, each time you start apisix-mesh-agent,
 configuration file will be written to `/path/to/apisix/conf/config-default.yaml`.
+
+## Traffic Interception
+
+Before run apisix-mesh-agent and Apache APISIX, the iptables rules
+should be set up in advance, please see [traffic-interception](./traffic-interception.md) for
+details.

@@ -65,6 +65,7 @@ if outbound TCP traffic (say the destination port is 80) is desired to be interc
 
 	cmd.PersistentFlags().StringVar(&cfg.InboundInterceptionMode, "inbound-interception-mode", "REDIRECT",
 		"iptables mode to redirect inbound connections")
+	cmd.PersistentFlags().StringVar(&cfg.InboundCapturePort, "apisix-inbound-capture-port", "9081", "target port where all inbound TCP traffic should be redirected on")
 	cmd.PersistentFlags().StringVar(&cfg.ProxyPort, "apisix-port", "9080", "the target port where all TCP traffic should be redirected on")
 	cmd.PersistentFlags().StringVar(&cfg.InboundPortsInclude, "inbound-ports", "",
 		"comma separated list of inbound ports for which traffic is to be redirected, the wildcard character \"*\" can be used to configure redirection for all ports, empty list will disable the redirection")
@@ -79,6 +80,11 @@ func (ic *iptablesConstructor) run() {
 	ic.iptables.AppendRuleV4(
 		types.RedirectChain, "nat", "-p", "tcp", "-j", "REDIRECT", "--to-ports", ic.cfg.ProxyPort,
 	)
+	ic.iptables.AppendRuleV4(
+		types.InboundRedirectChain, "nat", "-p", "tcp",
+		"-j", "REDIRECT", "--to-ports", ic.cfg.InboundCapturePort,
+	)
+
 	// Should first insert these skipping rules.
 	ic.insertSkipRules()
 	ic.insertInboundRules()
@@ -95,11 +101,11 @@ func (ic *iptablesConstructor) insertInboundRules() {
 	if ic.cfg.InboundPortsInclude == "*" {
 		// Makes sure SSH is not redirected
 		ic.iptables.AppendRuleV4(types.InboundChain, "nat", "-p", "tcp", "--dport", "22", "-j", "RETURN")
-		ic.iptables.AppendRuleV4(types.InboundChain, "nat", "-p", "tcp", "-j", types.RedirectChain)
+		ic.iptables.AppendRuleV4(types.InboundChain, "nat", "-p", "tcp", "-j", types.InboundRedirectChain)
 	} else {
 		for _, port := range split(ic.cfg.InboundPortsInclude) {
 			ic.iptables.AppendRuleV4(
-				types.InboundChain, "nat", "-p", "tcp", "--dport", port, "-j", types.RedirectChain,
+				types.InboundChain, "nat", "-p", "tcp", "--dport", port, "-j", types.InboundRedirectChain,
 			)
 		}
 	}

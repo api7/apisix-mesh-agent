@@ -26,3 +26,9 @@ Test
 cd /path/to/apisix-mesh-agent
 make unit-test
 ```
+
+### Mimic practical environment
+
+If you want to mimic the practical environment, iptables rules should be set up in your development
+environment, see [traffic-interception](./traffic-interception.md) for the details of creating
+the iptables rules.
