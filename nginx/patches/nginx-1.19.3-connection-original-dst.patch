@@ -1,30 +1,62 @@
+diff --git a/auto/os/linux b/auto/os/linux
+index 5e280eca..086e5372 100644
+--- a/auto/os/linux
++++ b/auto/os/linux
+@@ -190,6 +190,21 @@ ngx_feature_test="struct __user_cap_data_struct    data;
+                   (void) SYS_capset"
+ . auto/feature
+ 
++# netfilter_ipv4
++
++ngx_feature="netfilter_ipv4"
++ngx_feature_name="NGX_HAVE_NETFILTER_IPV4"
++ngx_feature_run=no
++ngx_feature_incs="#include <linux/netfilter_ipv4.h>"
++ngx_feature_path=
++ngx_feature_libs=
++ngx_feature_test="int so_original_dst;
++
++                  so_original_dst = SO_ORIGINAL_DST;
++
++                  (void) so_original_dst;"
++. auto/feature
++
+ 
+ # crypt_r()
+ 
 diff --git a/src/http/ngx_http_variables.c b/src/http/ngx_http_variables.c
-index e067cf0c..39fcace7 100644
+index e067cf0c..f38a4ca9 100644
 --- a/src/http/ngx_http_variables.c
 +++ b/src/http/ngx_http_variables.c
-@@ -129,6 +129,8 @@ static ngx_int_t ngx_http_variable_connection(ngx_http_request_t *r,
-     ngx_http_variable_value_t *v, uintptr_t data);
+@@ -130,6 +130,11 @@ static ngx_int_t ngx_http_variable_connection(ngx_http_request_t *r,
  static ngx_int_t ngx_http_variable_connection_requests(ngx_http_request_t *r,
      ngx_http_variable_value_t *v, uintptr_t data);
+ 
++#if (NGX_HTTP_NETFILTER_IPV4)
 +static ngx_int_t ngx_http_variable_connection_dst(ngx_http_request_t *r,
 +    ngx_http_variable_value_t *v, uintptr_t data);
- 
++#endif
++
  static ngx_int_t ngx_http_variable_nginx_version(ngx_http_request_t *r,
      ngx_http_variable_value_t *v, uintptr_t data);
-@@ -342,6 +344,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
+ static ngx_int_t ngx_http_variable_hostname(ngx_http_request_t *r,
+@@ -342,6 +347,11 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
      { ngx_string("connection_requests"), NULL,
        ngx_http_variable_connection_requests, 0, 0, 0 },
  
++#if (NGX_HTTP_NETFILTER_IPV4)
 +    { ngx_string("connection_original_dst"), NULL,
 +      ngx_http_variable_connection_dst, 0, 0, 0 },
++#endif
 +
      { ngx_string("nginx_version"), NULL, ngx_http_variable_nginx_version,
        0, 0, 0 },
  
-@@ -2252,6 +2257,39 @@ ngx_http_variable_connection_requests(ngx_http_request_t *r,
+@@ -2252,6 +2262,43 @@ ngx_http_variable_connection_requests(ngx_http_request_t *r,
  }
  
  
++#if (NGX_HTTP_NETFILTER_IPV4)
 +static ngx_int_t
 +ngx_http_variable_connection_dst(ngx_http_request_t *r,
 +    ngx_http_variable_value_t *v, uintptr_t data)
@@ -39,6 +71,8 @@ index e067cf0c..39fcace7 100644
 +    rn = getsockopt(r->connection->fd, SOL_IP, SO_ORIGINAL_DST, (void *) &dst,
 +                    &socklen);
 +    if (rn < 0) {
++        ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_socket_errno,
++                      "getsockopt(SO_ORIGINAL_DST) failed");
 +        return NGX_ERROR;
 +    }
 +
@@ -56,20 +90,23 @@ index e067cf0c..39fcace7 100644
 +
 +    return NGX_OK;
 +}
++#endif
 +
 +
  static ngx_int_t
  ngx_http_variable_nginx_version(ngx_http_request_t *r,
      ngx_http_variable_value_t *v, uintptr_t data)
 diff --git a/src/os/unix/ngx_linux_config.h b/src/os/unix/ngx_linux_config.h
-index 3036caeb..0e997fdb 100644
+index 3036caeb..2353e9b3 100644
 --- a/src/os/unix/ngx_linux_config.h
 +++ b/src/os/unix/ngx_linux_config.h
-@@ -103,6 +103,7 @@ typedef struct iocb  ngx_aiocb_t;
+@@ -103,6 +103,9 @@ typedef struct iocb  ngx_aiocb_t;
  #include <linux/capability.h>
  #endif
  
++#if (NGX_HAVE_NETFILTER_IPV4)
 +#include <linux/netfilter_ipv4.h>
++#endif
  
  #define NGX_LISTEN_BACKLOG        511
  

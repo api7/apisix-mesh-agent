@@ -154,7 +154,7 @@ ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/
 RUN cd /tmp \
     && wget https://github.com/luarocks/luarocks/archive/v3.4.0.tar.gz \
     && tar xf v3.4.0.tar.gz \
-    && cd luarocks-3.4.0 \
+    && cd luarocks-${LUAROCKS_VERSION} \
     && ./configure --with-lua=/usr/local/openresty/luajit \
     && make build \
     && make install
@@ -203,6 +203,8 @@ COPY --from=agent-build-stage /apisix-mesh-agent/apisix-mesh-agent /usr/bin/apis
 ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
 
 WORKDIR /usr/local/apisix
+
+ENTRYPOINT ["apisix-mesh-agent"]
 
 # Use SIGQUIT instead of default SIGTERM to cleanly drain requests
 # See https://github.com/openresty/docker-openresty/blob/master/README.md#tips--pitfalls
