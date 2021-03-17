@@ -152,8 +152,8 @@ ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/
 
 # Step2 , building LuaRocks
 RUN cd /tmp \
-    && wget https://github.com/luarocks/luarocks/archive/v3.4.0.tar.gz \
-    && tar xf v3.4.0.tar.gz \
+    && wget https://github.com/luarocks/luarocks/archive/v${LUAROCKS_VERSION}.tar.gz \
+    && tar xf v${LUAROCKS_VERSION}.tar.gz \
     && cd luarocks-${LUAROCKS_VERSION} \
     && ./configure --with-lua=/usr/local/openresty/luajit \
     && make build \

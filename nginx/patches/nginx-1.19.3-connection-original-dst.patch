@@ -25,7 +25,7 @@ index 5e280eca..086e5372 100644
  # crypt_r()
  
 diff --git a/src/http/ngx_http_variables.c b/src/http/ngx_http_variables.c
-index e067cf0c..f38a4ca9 100644
+index e067cf0c..33aa042e 100644
 --- a/src/http/ngx_http_variables.c
 +++ b/src/http/ngx_http_variables.c
 @@ -130,6 +130,11 @@ static ngx_int_t ngx_http_variable_connection(ngx_http_request_t *r,
@@ -71,7 +71,7 @@ index e067cf0c..f38a4ca9 100644
 +    rn = getsockopt(r->connection->fd, SOL_IP, SO_ORIGINAL_DST, (void *) &dst,
 +                    &socklen);
 +    if (rn < 0) {
-+        ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_socket_errno,
++        ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_socket_errno,
 +                      "getsockopt(SO_ORIGINAL_DST) failed");
 +        return NGX_ERROR;
 +    }
