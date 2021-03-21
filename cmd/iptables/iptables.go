@@ -1,6 +1,7 @@
 package iptables
 
 import (
+	"os/user"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -19,7 +20,10 @@ type iptablesConstructor struct {
 
 // NewSetupCommand creates the iptables sub-command object.
 func NewSetupCommand() *cobra.Command {
-	var cfg config.Config
+	var (
+		cfg       config.Config
+		proxyUser string
+	)
 	cmd := &cobra.Command{
 		Use:   "iptables [flags]",
 		Short: "Setting up iptables rules for port forwarding",
@@ -42,6 +46,13 @@ if outbound TCP traffic (say the destination port is 80) is desired to be interc
 				dep = &dependencies.RealDependencies{}
 			}
 
+			usr, err := user.Lookup(proxyUser)
+			if err != nil {
+				panic(err)
+			}
+			cfg.ProxyUID = usr.Uid
+			cfg.ProxyGID = usr.Gid
+
 			ic := &iptablesConstructor{
 				iptables: builder.NewIptablesBuilder(),
 				cfg:      &cfg,
@@ -60,6 +71,7 @@ if outbound TCP traffic (say the destination port is 80) is desired to be interc
 		"comma separated list of inbound ports for which traffic is to be redirected, the wildcard character \"*\" can be used to configure redirection for all ports, empty list will disable the redirection")
 	cmd.PersistentFlags().StringVar(&cfg.OutboundPortsInclude, "outbound-ports", "", "comma separated list of outbound ports for which traffic is to be redirected")
 	cmd.PersistentFlags().BoolVar(&cfg.DryRun, "dry-run", false, "dry run mode")
+	cmd.PersistentFlags().StringVar(&proxyUser, "apisix-user", "nobody", "user to run APISIX")
 
 	return cmd
 }
@@ -72,6 +84,9 @@ func (ic *iptablesConstructor) run() {
 		types.InboundRedirectChain, "nat", "-p", "tcp",
 		"-j", "REDIRECT", "--to-ports", ic.cfg.InboundCapturePort,
 	)
+
+	// Should first insert these skipping rules.
+	ic.insertSkipRules()
 	ic.insertInboundRules()
 	ic.insertOutboundRules()
 	ic.executeCommand()
@@ -102,6 +117,13 @@ func (ic *iptablesConstructor) insertOutboundRules() {
 			types.OutputChain, "nat", "-p", "tcp", "--dport", port, "-j", types.RedirectChain,
 		)
 	}
+}
+
+func (ic *iptablesConstructor) insertSkipRules() {
+	ic.iptables.AppendRuleV4(types.OutputChain, "nat", "-o", "lo", "!", "-d",
+		"127.0.0.1/32", "-m", "owner", "--uid-owner", ic.cfg.ProxyUID, "-j", "RETURN")
+	ic.iptables.AppendRuleV4(types.OutputChain, "nat", "-m", "owner", "--gid-owner",
+		ic.cfg.ProxyGID, "-j", "RETURN")
 }
 
 func (ic *iptablesConstructor) executeCommand() {
