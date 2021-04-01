@@ -69,7 +69,7 @@ func NewXDSProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
 	}
 
 	node := &corev3.Node{
-		Id:            cfg.RunId,
+		Id:            util.GenNodeId(cfg.RunId),
 		UserAgentName: fmt.Sprintf("apisix-mesh-agent/%s", version.Short()),
 	}
 	return &grpcProvisioner{
@@ -118,6 +118,7 @@ func (p *grpcProvisioner) Run(stop chan struct{}) error {
 
 	p.firstSend()
 	<-stop
+	close(p.evChan)
 	return nil
 }
 
@@ -178,7 +179,7 @@ func (p *grpcProvisioner) recvLoop(ctx context.Context, client discoveryv3.Aggre
 	condFunc := func() (bool, error) {
 		dr, err := client.Recv()
 		if err != nil {
-			p.logger.Errorw("failed receive discovery request",
+			p.logger.Errorw("failed to receive discovery response",
 				zap.Error(err),
 			)
 			return false, nil

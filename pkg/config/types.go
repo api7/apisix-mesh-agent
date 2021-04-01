@@ -86,6 +86,7 @@ func NewDefaultConfig() *Config {
 	}
 }
 
+// Validate validates the config object.
 func (cfg *Config) Validate() error {
 	if cfg.Provisioner == "" {
 		return errors.New("unspecified provisioner")
