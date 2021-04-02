@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/api7/apisix-mesh-agent/pkg/provisioner/util"
+
 	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	endpointv3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
@@ -33,6 +35,10 @@ func TestNewXDSProvisioner(t *testing.T) {
 		LogOutput:       "stderr",
 		Provisioner:     "xds-v3-grpc",
 		XDSConfigSource: "abc",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, p)
@@ -44,7 +50,7 @@ func TestNewXDSProvisioner(t *testing.T) {
 	assert.NotNil(t, p.Channel())
 
 	gp := p.(*grpcProvisioner)
-	assert.Equal(t, gp.node.Id, cfg.RunId)
+	assert.Equal(t, gp.node.Id, util.GenNodeId(cfg.RunId, "1.1.1.1", "default.svc.cluster.local"))
 	assert.Equal(t, gp.node.UserAgentName, "apisix-mesh-agent/"+version.Short())
 }
 
@@ -55,6 +61,10 @@ func TestFirstSend(t *testing.T) {
 		LogOutput:       "stderr",
 		Provisioner:     "xds-v3-grpc",
 		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, err)
@@ -132,6 +142,10 @@ func TestSendLoop(t *testing.T) {
 		LogOutput:       "stderr",
 		Provisioner:     "xds-v3-grpc",
 		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, err)
@@ -167,6 +181,10 @@ func TestRecvLoop(t *testing.T) {
 		LogOutput:       "stderr",
 		Provisioner:     "xds-v3-grpc",
 		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, err)
@@ -211,6 +229,10 @@ func TestTranslateLoop(t *testing.T) {
 		LogOutput:       "stderr",
 		Provisioner:     "xds-v3-grpc",
 		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, err)
@@ -252,6 +274,10 @@ func TestTranslate(t *testing.T) {
 		LogOutput:       "stderr",
 		Provisioner:     "xds-v3-grpc",
 		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, err)
@@ -451,6 +477,10 @@ func TestGRPCProvisioner(t *testing.T) {
 		LogOutput:       "stderr",
 		Provisioner:     "xds-v3-grpc",
 		XDSConfigSource: "grpc://" + ln.Addr().String(),
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, err)
