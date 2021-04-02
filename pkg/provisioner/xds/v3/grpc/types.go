@@ -68,8 +68,10 @@ func NewXDSProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
 		return nil, err
 	}
 
+	// TODO Configurable domain suffix.
+	dnsDomain := cfg.RunningContext.PodNamespace + ".svc.cluster.local"
 	node := &corev3.Node{
-		Id:            util.GenNodeId(cfg.RunId),
+		Id:            util.GenNodeId(cfg.RunId, cfg.RunningContext.IPAddress, dnsDomain),
 		UserAgentName: fmt.Sprintf("apisix-mesh-agent/%s", version.Short()),
 	}
 	return &grpcProvisioner{
@@ -257,7 +259,19 @@ func (p *grpcProvisioner) translate(resp *discoveryv3.DiscoveryResponse) error {
 		for _, res := range resp.GetResources() {
 			ups, err := p.processClusterV3(res)
 			if err != nil {
-				return err
+				if err == xdsv3.ErrFeatureNotSupportedYet {
+					p.logger.Warnw("failed to translate Cluster to APISIX upstreams",
+						zap.Error(err),
+						zap.Any("cluster", res),
+					)
+					continue
+				} else {
+					p.logger.Errorw("failed to translate Cluster to APISIX upstreams",
+						zap.Error(err),
+						zap.Any("cluster", res),
+					)
+					return err
+				}
 			}
 			m.Upstreams = append(m.Upstreams, ups)
 			newUps[ups.Name] = ups
