@@ -97,6 +97,7 @@ func (p *grpcProvisioner) Channel() <-chan []types.Event {
 func (p *grpcProvisioner) Run(stop chan struct{}) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	defer close(p.evChan)
 	// TODO Support Credentials.
 	conn, err := grpcp.DialContext(ctx, p.configSource,
 		grpcp.WithInsecure(),
@@ -124,7 +125,6 @@ func (p *grpcProvisioner) Run(stop chan struct{}) error {
 
 	p.firstSend()
 	<-stop
-	close(p.evChan)
 	return nil
 }
 
