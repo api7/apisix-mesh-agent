@@ -57,6 +57,7 @@ func (p *grpcProvisioner) processClusterV3(res *any.Any) (*apisix.Upstream, erro
 		p.logger.Warnw("cluster depends on another EDS config, an upstream without nodes setting was generated",
 			zap.Any("upstream", ups),
 		)
+		p.edsRequiredClusters[ups.Name] = struct{}{}
 	}
 	return ups, nil
 }
