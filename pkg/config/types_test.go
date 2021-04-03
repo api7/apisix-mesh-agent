@@ -2,6 +2,8 @@ package config
 
 import (
 	"errors"
+	"net"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,4 +39,14 @@ func TestConfigValidate(t *testing.T) {
 
 	cfg.Provisioner = "xds-v3-grpc"
 	assert.Equal(t, cfg.Validate(), ErrEmptyXDSConfigSource)
+}
+
+func TestGetRunningContext(t *testing.T) {
+	assert.Nil(t, os.Setenv("POD_NAMESPACE", "apisix"))
+	rc := getRunningContext()
+	assert.Equal(t, rc.PodNamespace, "apisix")
+	assert.Nil(t, os.Setenv("POD_NAMESPACE", ""))
+	rc = getRunningContext()
+	assert.Equal(t, rc.PodNamespace, "default")
+	assert.NotNil(t, net.ParseIP(rc.IPAddress))
 }

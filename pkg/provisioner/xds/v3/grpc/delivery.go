@@ -51,10 +51,6 @@ func (p *grpcProvisioner) processClusterV3(res *any.Any) (*apisix.Upstream, erro
 	}
 	ups, err := p.v3Adaptor.TranslateCluster(&cluster)
 	if err != nil && err != xdsv3.ErrRequireFurtherEDS {
-		p.logger.Errorw("failed to translate Cluster to APISIX routes",
-			zap.Error(err),
-			zap.Any("cluster", &cluster),
-		)
 		return nil, err
 	}
 	if err == xdsv3.ErrRequireFurtherEDS {

@@ -68,8 +68,10 @@ func NewXDSProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
 		return nil, err
 	}
 
+	// TODO Configurable domain suffix.
+	dnsDomain := cfg.RunningContext.PodNamespace + ".svc.cluster.local"
 	node := &corev3.Node{
-		Id:            cfg.RunId,
+		Id:            util.GenNodeId(cfg.RunId, cfg.RunningContext.IPAddress, dnsDomain),
 		UserAgentName: fmt.Sprintf("apisix-mesh-agent/%s", version.Short()),
 	}
 	return &grpcProvisioner{
@@ -118,6 +120,7 @@ func (p *grpcProvisioner) Run(stop chan struct{}) error {
 
 	p.firstSend()
 	<-stop
+	close(p.evChan)
 	return nil
 }
 
@@ -178,7 +181,7 @@ func (p *grpcProvisioner) recvLoop(ctx context.Context, client discoveryv3.Aggre
 	condFunc := func() (bool, error) {
 		dr, err := client.Recv()
 		if err != nil {
-			p.logger.Errorw("failed receive discovery request",
+			p.logger.Errorw("failed to receive discovery response",
 				zap.Error(err),
 			)
 			return false, nil
@@ -256,7 +259,19 @@ func (p *grpcProvisioner) translate(resp *discoveryv3.DiscoveryResponse) error {
 		for _, res := range resp.GetResources() {
 			ups, err := p.processClusterV3(res)
 			if err != nil {
-				return err
+				if err == xdsv3.ErrFeatureNotSupportedYet {
+					p.logger.Warnw("failed to translate Cluster to APISIX upstreams",
+						zap.Error(err),
+						zap.Any("cluster", res),
+					)
+					continue
+				} else {
+					p.logger.Errorw("failed to translate Cluster to APISIX upstreams",
+						zap.Error(err),
+						zap.Any("cluster", res),
+					)
+					return err
+				}
 			}
 			m.Upstreams = append(m.Upstreams, ups)
 			newUps[ups.Name] = ups

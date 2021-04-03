@@ -3,7 +3,9 @@ package config
 import (
 	"errors"
 	"net"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -39,6 +41,14 @@ var (
 	DefaultEtcdKeyPrefix = "/apisix"
 )
 
+// RunningContext contains data which can be decided only when running.
+type RunningContext struct {
+	// PodNamespace is the namesapce of the resident pod.
+	PodNamespace string
+	// The IP address of the resident pod.
+	IPAddress string
+}
+
 // Config contains configurations required for running apisix-mesh-agent.
 type Config struct {
 	// Running Id of this instance, it will be filled by
@@ -68,6 +78,10 @@ type Config struct {
 	APISIXHomePath string `json:"apisix_home_path" yaml:"apisix_home_path"`
 	// The executable binary path of Apache APISIX.
 	APISIXBinPath string `json:"apisix_bin_path" yaml:"apisix_bin_path"`
+
+	// RunningContext is the running context, it's self-contained.
+	// TODO: Move it outside here since it doesn't belong to "configuration".
+	RunningContext *RunningContext `json:"running_context" yaml:"running_context"`
 }
 
 // NewDefaultConfig returns a Config object with all items filled by
@@ -83,9 +97,12 @@ func NewDefaultConfig() *Config {
 		APISIXHomePath: DefaultAPISIXHomePath,
 		APISIXBinPath:  DefaultAPISIXBinPath,
 		RunMode:        StandaloneMode,
+
+		RunningContext: getRunningContext(),
 	}
 }
 
+// Validate validates the config object.
 func (cfg *Config) Validate() error {
 	if cfg.Provisioner == "" {
 		return errors.New("unspecified provisioner")
@@ -110,4 +127,37 @@ func (cfg *Config) Validate() error {
 	}
 
 	return nil
+}
+
+func getRunningContext() *RunningContext {
+	namespace := "default"
+	if value := os.Getenv("POD_NAMESPACE"); value != "" {
+		namespace = value
+	}
+
+	var (
+		ipAddr string
+	)
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		panic(err)
+	}
+	for _, iface := range ifaces {
+		if iface.Name != "lo" {
+			addrs, err := iface.Addrs()
+			if err != nil {
+				panic(err)
+			}
+			if len(addrs) > 0 {
+				ipAddr = strings.Split(addrs[0].String(), "/")[0]
+			}
+		}
+	}
+	if ipAddr == "" {
+		ipAddr = "127.0.0.1"
+	}
+	return &RunningContext{
+		PodNamespace: namespace,
+		IPAddress:    ipAddr,
+	}
 }
