@@ -553,3 +553,38 @@ func TestGRPCProvisioner(t *testing.T) {
 	assert.Nil(t, ack.ErrorDetail, nil)
 	assert.Equal(t, ack.TypeUrl, types.RouteConfigurationUrl)
 }
+
+func TestSendEds(t *testing.T) {
+	cfg := &config.Config{
+		RunId:           "12345",
+		LogLevel:        "info",
+		LogOutput:       "stderr",
+		Provisioner:     "xds-v3-grpc",
+		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
+	}
+	p, err := NewXDSProvisioner(cfg)
+	assert.Nil(t, err)
+	gp := p.(*grpcProvisioner)
+
+	gp.edsRequiredClusters["outbound|15010||istiod.istio-system.svc.cluster.local"] = struct{}{}
+	gp.edsRequiredClusters["outbound|80||nginx.default.svc.cluster.local"] = struct{}{}
+
+	go func() {
+		gp.sendEds()
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		assert.FailNow(t, "DiscoveryRequest is not sent in time")
+	case dr := <-gp.sendCh:
+		assert.Equal(t, dr.TypeUrl, types.ClusterLoadAssignmentUrl)
+		assert.Len(t, dr.ResourceNames, 2)
+		sort.Strings(dr.ResourceNames)
+		assert.Equal(t, dr.ResourceNames[0], "outbound|15010||istiod.istio-system.svc.cluster.local")
+		assert.Equal(t, dr.ResourceNames[1], "outbound|80||nginx.default.svc.cluster.local")
+	}
+}
