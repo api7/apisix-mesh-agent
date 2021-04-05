@@ -86,12 +86,6 @@ func TestFirstSend(t *testing.T) {
 	case dr := <-gp.sendCh:
 		assert.Equal(t, dr.TypeUrl, types.ClusterUrl)
 	}
-	select {
-	case <-time.After(time.Second):
-		assert.FailNow(t, "DiscoveryRequest is not sent in time")
-	case dr := <-gp.sendCh:
-		assert.Equal(t, dr.TypeUrl, types.ClusterLoadAssignmentUrl)
-	}
 }
 
 type fakeClient struct {
@@ -282,6 +276,10 @@ func TestTranslate(t *testing.T) {
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, err)
 	gp := p.(*grpcProvisioner)
+	// As EDS request might be sent when handling CDS,
+	// here we create a buffered chan, to not block the
+	// send goroutine.
+	gp.sendCh = make(chan *discoveryv3.DiscoveryRequest, 1)
 
 	rc := &routev3.RouteConfiguration{
 		Name: "rc1",
@@ -496,12 +494,10 @@ func TestGRPCProvisioner(t *testing.T) {
 	urls = append(urls, dr.TypeUrl)
 	dr = <-srv.recvCh
 	urls = append(urls, dr.TypeUrl)
-	dr = <-srv.recvCh
 	urls = append(urls, dr.TypeUrl)
 
 	sort.Strings(urls)
 	assert.Equal(t, urls[0], types.ClusterUrl)
-	assert.Equal(t, urls[1], types.ClusterLoadAssignmentUrl)
 	assert.Equal(t, urls[2], types.RouteConfigurationUrl)
 
 	rc := &routev3.RouteConfiguration{
@@ -556,4 +552,39 @@ func TestGRPCProvisioner(t *testing.T) {
 	ack := <-srv.recvCh
 	assert.Nil(t, ack.ErrorDetail, nil)
 	assert.Equal(t, ack.TypeUrl, types.RouteConfigurationUrl)
+}
+
+func TestSendEds(t *testing.T) {
+	cfg := &config.Config{
+		RunId:           "12345",
+		LogLevel:        "info",
+		LogOutput:       "stderr",
+		Provisioner:     "xds-v3-grpc",
+		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
+	}
+	p, err := NewXDSProvisioner(cfg)
+	assert.Nil(t, err)
+	gp := p.(*grpcProvisioner)
+
+	gp.edsRequiredClusters["outbound|15010||istiod.istio-system.svc.cluster.local"] = struct{}{}
+	gp.edsRequiredClusters["outbound|80||nginx.default.svc.cluster.local"] = struct{}{}
+
+	go func() {
+		gp.sendEds()
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		assert.FailNow(t, "DiscoveryRequest is not sent in time")
+	case dr := <-gp.sendCh:
+		assert.Equal(t, dr.TypeUrl, types.ClusterLoadAssignmentUrl)
+		assert.Len(t, dr.ResourceNames, 2)
+		sort.Strings(dr.ResourceNames)
+		assert.Equal(t, dr.ResourceNames[0], "outbound|15010||istiod.istio-system.svc.cluster.local")
+		assert.Equal(t, dr.ResourceNames[1], "outbound|80||nginx.default.svc.cluster.local")
+	}
 }
