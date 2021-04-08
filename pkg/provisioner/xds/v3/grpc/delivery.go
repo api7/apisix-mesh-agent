@@ -37,6 +37,23 @@ func (p *grpcProvisioner) processRouteConfigurationV3(res *any.Any) ([]*apisix.R
 	return routes, nil
 }
 
+func (p *grpcProvisioner) processStaticRouteConfigurations(rcs []*routev3.RouteConfiguration) ([]*apisix.Route, error) {
+	var (
+		routes []*apisix.Route
+	)
+	for _, rc := range rcs {
+		route, err := p.v3Adaptor.TranslateRouteConfiguration(rc)
+		if err != nil {
+			p.logger.Errorw("failed to translate RouteConfiguration to APISIX routes",
+				zap.Error(err),
+				zap.Any("route", &route),
+			)
+			return nil, err
+		}
+	}
+	return routes, nil
+}
+
 func (p *grpcProvisioner) processClusterV3(res *any.Any) (*apisix.Upstream, error) {
 	var cluster clusterv3.Cluster
 	err := anypb.UnmarshalTo(res, &cluster, proto.UnmarshalOptions{

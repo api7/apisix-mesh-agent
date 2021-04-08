@@ -78,7 +78,7 @@ func TestFirstSend(t *testing.T) {
 	case <-time.After(time.Second):
 		assert.FailNow(t, "DiscoveryRequest is not sent in time")
 	case dr := <-gp.sendCh:
-		assert.Equal(t, dr.TypeUrl, types.RouteConfigurationUrl)
+		assert.Equal(t, dr.TypeUrl, types.ListenerUrl)
 	}
 	select {
 	case <-time.After(time.Second):
@@ -392,7 +392,7 @@ func TestTranslate(t *testing.T) {
 	evs := <-gp.evChan
 	assert.Len(t, evs, 1)
 	assert.Equal(t, evs[0].Type, types.EventAdd)
-	assert.Equal(t, evs[0].Object.(*apisix.Route).Name, "route1.vhost1.rc1")
+	assert.Equal(t, evs[0].Object.(*apisix.Route).Name, "route1#vhost1#rc1")
 	assert.Len(t, gp.routes, 1)
 
 	err = gp.translate(dr2)
@@ -498,7 +498,7 @@ func TestGRPCProvisioner(t *testing.T) {
 
 	sort.Strings(urls)
 	assert.Equal(t, urls[0], types.ClusterUrl)
-	assert.Equal(t, urls[2], types.RouteConfigurationUrl)
+	assert.Equal(t, urls[2], types.ListenerUrl)
 
 	rc := &routev3.RouteConfiguration{
 		Name: "rc1",
@@ -548,7 +548,7 @@ func TestGRPCProvisioner(t *testing.T) {
 	gp := p.(*grpcProvisioner)
 	ev := <-gp.evChan
 	assert.Len(t, ev, 1)
-	assert.Equal(t, ev[0].Object.(*apisix.Route).Name, "route1.vhost1.rc1")
+	assert.Equal(t, ev[0].Object.(*apisix.Route).Name, "route1#vhost1#rc1")
 	ack := <-srv.recvCh
 	assert.Nil(t, ack.ErrorDetail, nil)
 	assert.Equal(t, ack.TypeUrl, types.RouteConfigurationUrl)

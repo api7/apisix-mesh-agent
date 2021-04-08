@@ -3,6 +3,8 @@ package v3
 import (
 	"errors"
 
+	listenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+
 	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	endpointv3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
@@ -36,6 +38,9 @@ type Adaptor interface {
 	// TranslateClusterLoadAssignment translate the ClusterLoadAssignement resources to APISIX
 	// Upstream Nodes.
 	TranslateClusterLoadAssignment(*endpointv3.ClusterLoadAssignment) ([]*apisix.Node, error)
+	// CollectRouteNamesAndConfigs collects Rds route names and static route configurations
+	// from listener.
+	CollectRouteNamesAndConfigs(*listenerv3.Listener) ([]string, []*routev3.RouteConfiguration, error)
 }
 
 type adaptor struct {
