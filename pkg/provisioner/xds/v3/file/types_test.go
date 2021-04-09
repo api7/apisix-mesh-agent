@@ -230,7 +230,7 @@ func TestFileProvisionerHandleFileEvent(t *testing.T) {
 	switch obj := events[0].Object.(type) {
 	case *apisix.Route:
 		assert.Equal(t, obj.Uris[0], "/foo")
-		assert.Equal(t, obj.Name, "route1.vhost1.rc1")
+		assert.Equal(t, obj.Name, "route1#vhost1#rc1")
 		assert.Equal(t, obj.UpstreamId, id.GenID("kubernetes.default.svc.cluster.local"))
 		assert.Equal(t, obj.Status, apisix.Route_Enable)
 	case *apisix.Upstream:
