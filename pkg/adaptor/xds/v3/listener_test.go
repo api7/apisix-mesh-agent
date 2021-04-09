@@ -3,14 +3,12 @@ package v3
 import (
 	"testing"
 
-	"google.golang.org/protobuf/proto"
-
-	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
-
 	listenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	hcmv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 	xdswellknown "github.com/envoyproxy/go-control-plane/pkg/wellknown"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/api7/apisix-mesh-agent/pkg/log"
