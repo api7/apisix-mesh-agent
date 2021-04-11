@@ -26,7 +26,7 @@ func (p *xdsFileProvisioner) processRouteConfigurationV3(res *any.Any) []*apisix
 		return nil
 	}
 
-	routes, err := p.v3Adaptor.TranslateRouteConfiguration(&route)
+	routes, err := p.v3Adaptor.TranslateRouteConfiguration(&route, nil)
 	if err != nil {
 		p.logger.Errorw("failed to translate RouteConfiguration to APISIX routes",
 			zap.Error(err),

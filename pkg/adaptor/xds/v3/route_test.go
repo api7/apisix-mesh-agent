@@ -300,7 +300,7 @@ func TestTranslateVirtualHost(t *testing.T) {
 			},
 		},
 	}
-	routes, err := a.translateVirtualHost("test", vhost)
+	routes, err := a.translateVirtualHost("test", vhost, nil)
 	assert.Nil(t, err)
 	assert.Len(t, routes, 1)
 	assert.Equal(t, routes[0].Name, "route1#test#test")
@@ -317,6 +317,25 @@ func TestTranslateVirtualHost(t *testing.T) {
 	assert.Equal(t, routes[0].Vars, []*apisix.Var{
 		{
 			Vars: []string{"request_method", "~~", "POST"},
+		},
+	})
+}
+
+func TestPatchRoutesWithOriginalDestination(t *testing.T) {
+	routes := []*apisix.Route{
+		{
+			Name: "1",
+			Id:   "1",
+		},
+	}
+	patchRoutesWithOriginalDestination(routes, "10.0.5.4:8080")
+	assert.Equal(t, routes[0].Vars, []*apisix.Var{
+		{
+			Vars: []string{
+				"connection_original_dst",
+				"==",
+				"10.0.5.4:8080",
+			},
 		},
 	})
 }

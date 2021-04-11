@@ -31,7 +31,7 @@ var (
 type Adaptor interface {
 	// TranslateRouteConfiguration translates a RouteConfiguration to a series APISIX
 	// Routes.
-	TranslateRouteConfiguration(*routev3.RouteConfiguration) ([]*apisix.Route, error)
+	TranslateRouteConfiguration(*routev3.RouteConfiguration, *TranslateOptions) ([]*apisix.Route, error)
 	// TranslateCluster translates a Cluster to an APISIX Upstreams.
 	TranslateCluster(*clusterv3.Cluster) (*apisix.Upstream, error)
 	// TranslateClusterLoadAssignment translate the ClusterLoadAssignement resources to APISIX
@@ -40,6 +40,19 @@ type Adaptor interface {
 	// CollectRouteNamesAndConfigs collects Rds route names and static route configurations
 	// from listener.
 	CollectRouteNamesAndConfigs(*listenerv3.Listener) ([]string, []*routev3.RouteConfiguration, error)
+}
+
+// TranslateOptions contains some options to customize the translate process.
+type TranslateOptions struct {
+	// RouteOriginalDestination is a map which key is the name of RouteConfiguration
+	// and value is the original destination address that a connection should have
+	// to match this route. The original destination just happens to be the address
+	// of the listener.
+	// This is to obey the xDS specification as route configs are configured on listeners
+	// explicitly while there is no listener configuration on APISIX, so this is necessary
+	// to avoid the cross-listener-use of routes.
+	// An extra `vars` expression will be added only if the listener address can be found here.
+	RouteOriginalDestination map[string]string
 }
 
 type adaptor struct {

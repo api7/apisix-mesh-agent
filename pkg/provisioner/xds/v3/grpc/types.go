@@ -44,6 +44,11 @@ type grpcProvisioner struct {
 	evChan       chan []types.Event
 	v3Adaptor    xdsv3.Adaptor
 
+	// find the listener (address) owner, an extra match
+	// condition will be patched to the APISIX route.
+	// "connection_original_dst == <ip>:<port>"
+	routeOwnership map[string]string
+
 	// static route configuration from listeners.
 	staticRouteConfigurations []*routev3.RouteConfiguration
 
@@ -318,6 +323,7 @@ func (p *grpcProvisioner) translate(resp *discoveryv3.DiscoveryResponse) error {
 			rdsNames      []string
 			staticConfigs []*routev3.RouteConfiguration
 		)
+		routeOwnership := make(map[string]string)
 		for _, res := range resp.GetResources() {
 			var listener listenerv3.Listener
 			if err := anypb.UnmarshalTo(res, &listener, proto.UnmarshalOptions{}); err != nil {
@@ -327,14 +333,28 @@ func (p *grpcProvisioner) translate(resp *discoveryv3.DiscoveryResponse) error {
 				)
 				return err
 			}
+			sockAddr := listener.Address.GetSocketAddress()
+			if sockAddr == nil || sockAddr.GetPortValue() == 0 {
+				// Only use listener which listens on socket.
+				// TODO Support named port.
+				continue
+			}
+			addr := fmt.Sprintf("%s:%d", sockAddr.GetAddress(), sockAddr.GetPortValue())
 			names, cfgs, err := p.v3Adaptor.CollectRouteNamesAndConfigs(&listener)
 			if err != nil {
 				return err
 			}
 			rdsNames = append(rdsNames, names...)
 			staticConfigs = append(staticConfigs, cfgs...)
+			for _, name := range names {
+				routeOwnership[name] = addr
+			}
+			for _, cfg := range cfgs {
+				routeOwnership[cfg.GetName()] = addr
+			}
 		}
 		p.staticRouteConfigurations = staticConfigs
+		p.routeOwnership = routeOwnership
 		p.trySendRds(rdsNames)
 	default:
 		return _errUnknownResourceTypeUrl

@@ -663,6 +663,16 @@ func TestTranslateListener(t *testing.T) {
 	assert.Nil(t, anypb.MarshalFrom(&any1, f1, proto.MarshalOptions{}))
 	li := &listenerv3.Listener{
 		Name: "listener1",
+		Address: &corev3.Address{
+			Address: &corev3.Address_SocketAddress{
+				SocketAddress: &corev3.SocketAddress{
+					Address: "10.0.5.3",
+					PortSpecifier: &corev3.SocketAddress_PortValue{
+						PortValue: 8080,
+					},
+				},
+			},
+		},
 		FilterChains: []*listenerv3.FilterChain{
 			{
 				Filters: []*listenerv3.Filter{
