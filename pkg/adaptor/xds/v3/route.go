@@ -36,7 +36,8 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 
 	// FIXME Respect the CaseSensitive field.
 	for _, route := range vhost.GetRoutes() {
-		if !route.GetMatch().CaseSensitive.GetValue() {
+		sensitive := route.GetMatch().CaseSensitive
+		if sensitive != nil && !sensitive.GetValue() {
 			// Apache APISIX doens't support case insensitive URI match,
 			// so these routes should be neglected.
 			adaptor.logger.Warnw("ignore route with case insensitive match",
@@ -68,12 +69,25 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 			continue
 		}
 		vars = append(vars, queryVars...)
-		name = fmt.Sprintf("%s.%s.%s", name, vhost.GetName(), prefix)
+		name = fmt.Sprintf("%s#%s#%s", name, vhost.GetName(), prefix)
+		var (
+			hosts []string
+		)
+		for _, domain := range vhost.Domains {
+			if domain == "*" {
+				// If this route allows any domain to use, just don't set hosts
+				// in APISIX routes.
+				hosts = nil
+				break
+			} else {
+				hosts = append(hosts, domain)
+			}
+		}
 		r := &apisix.Route{
 			Name:       name,
 			Status:     1,
 			Id:         id.GenID(name),
-			Hosts:      vhost.Domains,
+			Hosts:      hosts,
 			Uris:       []string{uri},
 			UpstreamId: id.GenID(cluster),
 			Vars:       vars,

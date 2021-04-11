@@ -303,7 +303,7 @@ func TestTranslateVirtualHost(t *testing.T) {
 	routes, err := a.translateVirtualHost("test", vhost)
 	assert.Nil(t, err)
 	assert.Len(t, routes, 1)
-	assert.Equal(t, routes[0].Name, "route1.test.test")
+	assert.Equal(t, routes[0].Name, "route1#test#test")
 	assert.Equal(t, routes[0].Status, apisix.Route_Enable)
 	assert.Equal(t, routes[0].Id, id.GenID(routes[0].Name))
 	assert.Equal(t, routes[0].Hosts, []string{

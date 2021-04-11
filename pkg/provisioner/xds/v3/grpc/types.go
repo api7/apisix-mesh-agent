@@ -8,11 +8,15 @@ import (
 	"time"
 
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	listenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	discoveryv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"go.uber.org/zap"
 	"google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/genproto/googleapis/rpc/status"
 	grpcp "google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	xdsv3 "github.com/api7/apisix-mesh-agent/pkg/adaptor/xds/v3"
@@ -40,7 +44,12 @@ type grpcProvisioner struct {
 	evChan       chan []types.Event
 	v3Adaptor    xdsv3.Adaptor
 
+	// static route configuration from listeners.
+	staticRouteConfigurations []*routev3.RouteConfiguration
+
+	// last state of routes.
 	routes []*apisix.Route
+	// last state of upstreams.
 	// map is necessary since EDS requires the original cluster
 	// by the name.
 	upstreams map[string]*apisix.Upstream
@@ -131,7 +140,7 @@ func (p *grpcProvisioner) Run(stop chan struct{}) error {
 func (p *grpcProvisioner) firstSend() {
 	dr1 := &discoveryv3.DiscoveryRequest{
 		Node:    p.node,
-		TypeUrl: types.RouteConfigurationUrl,
+		TypeUrl: types.ListenerUrl,
 	}
 	dr2 := &discoveryv3.DiscoveryRequest{
 		Node:    p.node,
@@ -140,7 +149,7 @@ func (p *grpcProvisioner) firstSend() {
 
 	p.sendCh <- dr1
 	p.sendCh <- dr2
-	p.logger.Debugw("sent initial discovery requests for route and cluster")
+	p.logger.Debugw("sent initial discovery requests for listeners and clusters")
 }
 
 // sendLoop receives pending DiscoveryRequest objects and sends them to client.
@@ -251,6 +260,13 @@ func (p *grpcProvisioner) translate(resp *discoveryv3.DiscoveryResponse) error {
 			}
 			m.Routes = append(m.Routes, partial...)
 		}
+		if p.staticRouteConfigurations != nil {
+			partial, err := p.processStaticRouteConfigurations(p.staticRouteConfigurations)
+			if err != nil {
+				return err
+			}
+			m.Routes = append(m.Routes, partial...)
+		}
 		o.Routes = p.routes
 		p.routes = m.Routes
 
@@ -297,6 +313,29 @@ func (p *grpcProvisioner) translate(resp *discoveryv3.DiscoveryResponse) error {
 			p.upstreams[ups.Name] = ups
 			m.Upstreams = append(m.Upstreams, ups)
 		}
+	case types.ListenerUrl:
+		var (
+			rdsNames      []string
+			staticConfigs []*routev3.RouteConfiguration
+		)
+		for _, res := range resp.GetResources() {
+			var listener listenerv3.Listener
+			if err := anypb.UnmarshalTo(res, &listener, proto.UnmarshalOptions{}); err != nil {
+				p.logger.Errorw("failed to unmarshal listener v3",
+					zap.Error(err),
+					zap.Any("response", res),
+				)
+				return err
+			}
+			names, cfgs, err := p.v3Adaptor.CollectRouteNamesAndConfigs(&listener)
+			if err != nil {
+				return err
+			}
+			rdsNames = append(rdsNames, names...)
+			staticConfigs = append(staticConfigs, cfgs...)
+		}
+		p.staticRouteConfigurations = staticConfigs
+		p.trySendRds(rdsNames)
 	default:
 		return _errUnknownResourceTypeUrl
 	}
@@ -376,6 +415,21 @@ func (p *grpcProvisioner) sendEds() {
 		dr.ResourceNames = append(dr.ResourceNames, name)
 	}
 	p.logger.Debugw("sending EDS discovery request",
+		zap.Any("body", dr),
+	)
+	p.sendCh <- dr
+}
+
+func (p *grpcProvisioner) trySendRds(rdsNames []string) {
+	if len(rdsNames) == 0 {
+		return
+	}
+	dr := &discoveryv3.DiscoveryRequest{
+		Node:          p.node,
+		ResourceNames: rdsNames,
+		TypeUrl:       types.RouteConfigurationUrl,
+	}
+	p.logger.Debugw("sending RDS discovery request",
 		zap.Any("body", dr),
 	)
 	p.sendCh <- dr
