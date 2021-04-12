@@ -46,7 +46,7 @@ spec:
     - --log-level
     - debug
     - --xds-config-source
-    - "{{ .Values.global.remotePilotAddress }}"
+    - "grpc://istiod.{{ .Values.global.istioNamespace }}.svc.{{ .Values.global.proxy.clusterDomain }}"
     env:
     - name: POD_NAME
       valueFrom:

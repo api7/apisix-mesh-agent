@@ -353,7 +353,7 @@ global:
 
   proxy_init:
     # Base name for the proxy_init container, used to configure iptables.
-    image: proxyv2
+    image: apisix-mesh
     resources:
       limits:
         cpu: 2000m
