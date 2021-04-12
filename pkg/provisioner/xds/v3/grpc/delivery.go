@@ -26,13 +26,36 @@ func (p *grpcProvisioner) processRouteConfigurationV3(res *any.Any) ([]*apisix.R
 		return nil, err
 	}
 
-	routes, err := p.v3Adaptor.TranslateRouteConfiguration(&route)
+	opts := &xdsv3.TranslateOptions{
+		RouteOriginalDestination: p.routeOwnership,
+	}
+	routes, err := p.v3Adaptor.TranslateRouteConfiguration(&route, opts)
 	if err != nil {
 		p.logger.Errorw("failed to translate RouteConfiguration to APISIX routes",
 			zap.Error(err),
 			zap.Any("route", &route),
 		)
 		return nil, err
+	}
+	return routes, nil
+}
+
+func (p *grpcProvisioner) processStaticRouteConfigurations(rcs []*routev3.RouteConfiguration) ([]*apisix.Route, error) {
+	var (
+		routes []*apisix.Route
+	)
+	opts := &xdsv3.TranslateOptions{
+		RouteOriginalDestination: p.routeOwnership,
+	}
+	for _, rc := range rcs {
+		route, err := p.v3Adaptor.TranslateRouteConfiguration(rc, opts)
+		if err != nil {
+			p.logger.Errorw("failed to translate RouteConfiguration to APISIX routes",
+				zap.Error(err),
+				zap.Any("route", &route),
+			)
+			return nil, err
+		}
 	}
 	return routes, nil
 }
@@ -51,16 +74,13 @@ func (p *grpcProvisioner) processClusterV3(res *any.Any) (*apisix.Upstream, erro
 	}
 	ups, err := p.v3Adaptor.TranslateCluster(&cluster)
 	if err != nil && err != xdsv3.ErrRequireFurtherEDS {
-		p.logger.Errorw("failed to translate Cluster to APISIX routes",
-			zap.Error(err),
-			zap.Any("cluster", &cluster),
-		)
 		return nil, err
 	}
 	if err == xdsv3.ErrRequireFurtherEDS {
 		p.logger.Warnw("cluster depends on another EDS config, an upstream without nodes setting was generated",
 			zap.Any("upstream", ups),
 		)
+		p.edsRequiredClusters[ups.Name] = struct{}{}
 	}
 	return ups, nil
 }

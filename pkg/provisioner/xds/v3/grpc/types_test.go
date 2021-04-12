@@ -10,8 +10,11 @@ import (
 	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	endpointv3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
+	listenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	hcmv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 	discoveryv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
+	xdswellknown "github.com/envoyproxy/go-control-plane/pkg/wellknown"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
@@ -19,8 +22,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/api7/apisix-mesh-agent/pkg/config"
+	"github.com/api7/apisix-mesh-agent/pkg/provisioner/util"
 	"github.com/api7/apisix-mesh-agent/pkg/types"
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 	"github.com/api7/apisix-mesh-agent/pkg/version"
@@ -33,6 +38,10 @@ func TestNewXDSProvisioner(t *testing.T) {
 		LogOutput:       "stderr",
 		Provisioner:     "xds-v3-grpc",
 		XDSConfigSource: "abc",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, p)
@@ -44,7 +53,7 @@ func TestNewXDSProvisioner(t *testing.T) {
 	assert.NotNil(t, p.Channel())
 
 	gp := p.(*grpcProvisioner)
-	assert.Equal(t, gp.node.Id, cfg.RunId)
+	assert.Equal(t, gp.node.Id, util.GenNodeId(cfg.RunId, "1.1.1.1", "default.svc.cluster.local"))
 	assert.Equal(t, gp.node.UserAgentName, "apisix-mesh-agent/"+version.Short())
 }
 
@@ -55,6 +64,10 @@ func TestFirstSend(t *testing.T) {
 		LogOutput:       "stderr",
 		Provisioner:     "xds-v3-grpc",
 		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, err)
@@ -68,19 +81,13 @@ func TestFirstSend(t *testing.T) {
 	case <-time.After(time.Second):
 		assert.FailNow(t, "DiscoveryRequest is not sent in time")
 	case dr := <-gp.sendCh:
-		assert.Equal(t, dr.TypeUrl, types.RouteConfigurationUrl)
+		assert.Equal(t, dr.TypeUrl, types.ListenerUrl)
 	}
 	select {
 	case <-time.After(time.Second):
 		assert.FailNow(t, "DiscoveryRequest is not sent in time")
 	case dr := <-gp.sendCh:
 		assert.Equal(t, dr.TypeUrl, types.ClusterUrl)
-	}
-	select {
-	case <-time.After(time.Second):
-		assert.FailNow(t, "DiscoveryRequest is not sent in time")
-	case dr := <-gp.sendCh:
-		assert.Equal(t, dr.TypeUrl, types.ClusterLoadAssignmentUrl)
 	}
 }
 
@@ -132,6 +139,10 @@ func TestSendLoop(t *testing.T) {
 		LogOutput:       "stderr",
 		Provisioner:     "xds-v3-grpc",
 		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, err)
@@ -167,6 +178,10 @@ func TestRecvLoop(t *testing.T) {
 		LogOutput:       "stderr",
 		Provisioner:     "xds-v3-grpc",
 		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, err)
@@ -211,6 +226,10 @@ func TestTranslateLoop(t *testing.T) {
 		LogOutput:       "stderr",
 		Provisioner:     "xds-v3-grpc",
 		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, err)
@@ -252,10 +271,18 @@ func TestTranslate(t *testing.T) {
 		LogOutput:       "stderr",
 		Provisioner:     "xds-v3-grpc",
 		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, err)
 	gp := p.(*grpcProvisioner)
+	// As EDS request might be sent when handling CDS,
+	// here we create a buffered chan, to not block the
+	// send goroutine.
+	gp.sendCh = make(chan *discoveryv3.DiscoveryRequest, 1)
 
 	rc := &routev3.RouteConfiguration{
 		Name: "rc1",
@@ -368,7 +395,7 @@ func TestTranslate(t *testing.T) {
 	evs := <-gp.evChan
 	assert.Len(t, evs, 1)
 	assert.Equal(t, evs[0].Type, types.EventAdd)
-	assert.Equal(t, evs[0].Object.(*apisix.Route).Name, "route1.vhost1.rc1")
+	assert.Equal(t, evs[0].Object.(*apisix.Route).Name, "route1#vhost1#rc1")
 	assert.Len(t, gp.routes, 1)
 
 	err = gp.translate(dr2)
@@ -451,6 +478,10 @@ func TestGRPCProvisioner(t *testing.T) {
 		LogOutput:       "stderr",
 		Provisioner:     "xds-v3-grpc",
 		XDSConfigSource: "grpc://" + ln.Addr().String(),
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, err)
@@ -466,13 +497,11 @@ func TestGRPCProvisioner(t *testing.T) {
 	urls = append(urls, dr.TypeUrl)
 	dr = <-srv.recvCh
 	urls = append(urls, dr.TypeUrl)
-	dr = <-srv.recvCh
 	urls = append(urls, dr.TypeUrl)
 
 	sort.Strings(urls)
 	assert.Equal(t, urls[0], types.ClusterUrl)
-	assert.Equal(t, urls[1], types.ClusterLoadAssignmentUrl)
-	assert.Equal(t, urls[2], types.RouteConfigurationUrl)
+	assert.Equal(t, urls[2], types.ListenerUrl)
 
 	rc := &routev3.RouteConfiguration{
 		Name: "rc1",
@@ -522,8 +551,164 @@ func TestGRPCProvisioner(t *testing.T) {
 	gp := p.(*grpcProvisioner)
 	ev := <-gp.evChan
 	assert.Len(t, ev, 1)
-	assert.Equal(t, ev[0].Object.(*apisix.Route).Name, "route1.vhost1.rc1")
+	assert.Equal(t, ev[0].Object.(*apisix.Route).Name, "route1#vhost1#rc1")
 	ack := <-srv.recvCh
 	assert.Nil(t, ack.ErrorDetail, nil)
 	assert.Equal(t, ack.TypeUrl, types.RouteConfigurationUrl)
+}
+
+func TestSendEds(t *testing.T) {
+	cfg := &config.Config{
+		RunId:           "12345",
+		LogLevel:        "info",
+		LogOutput:       "stderr",
+		Provisioner:     "xds-v3-grpc",
+		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
+	}
+	p, err := NewXDSProvisioner(cfg)
+	assert.Nil(t, err)
+	gp := p.(*grpcProvisioner)
+
+	gp.edsRequiredClusters["outbound|15010||istiod.istio-system.svc.cluster.local"] = struct{}{}
+	gp.edsRequiredClusters["outbound|80||nginx.default.svc.cluster.local"] = struct{}{}
+
+	go func() {
+		gp.sendEds()
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		assert.FailNow(t, "DiscoveryRequest is not sent in time")
+	case dr := <-gp.sendCh:
+		assert.Equal(t, dr.TypeUrl, types.ClusterLoadAssignmentUrl)
+		assert.Len(t, dr.ResourceNames, 2)
+		sort.Strings(dr.ResourceNames)
+		assert.Equal(t, dr.ResourceNames[0], "outbound|15010||istiod.istio-system.svc.cluster.local")
+		assert.Equal(t, dr.ResourceNames[1], "outbound|80||nginx.default.svc.cluster.local")
+	}
+}
+
+func TestTrySendRds(t *testing.T) {
+	cfg := &config.Config{
+		RunId:           "12345",
+		LogLevel:        "info",
+		LogOutput:       "stderr",
+		Provisioner:     "xds-v3-grpc",
+		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
+	}
+	p, err := NewXDSProvisioner(cfg)
+	assert.Nil(t, err)
+	gp := p.(*grpcProvisioner)
+
+	go func() {
+		rdsNames := []string{
+			"route1", "route2", "route3",
+		}
+		gp.trySendRds(rdsNames)
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		assert.FailNow(t, "DiscoveryRequest is not sent in time")
+	case dr := <-gp.sendCh:
+		assert.Equal(t, dr.TypeUrl, types.RouteConfigurationUrl)
+		assert.Len(t, dr.ResourceNames, 3)
+		sort.Strings(dr.ResourceNames)
+		assert.Equal(t, dr.ResourceNames[0], "route1")
+		assert.Equal(t, dr.ResourceNames[1], "route2")
+		assert.Equal(t, dr.ResourceNames[2], "route3")
+	}
+}
+
+func TestTranslateListener(t *testing.T) {
+	cfg := &config.Config{
+		RunId:           "12345",
+		LogLevel:        "info",
+		LogOutput:       "stderr",
+		Provisioner:     "xds-v3-grpc",
+		XDSConfigSource: "grpc://127.0.0.1:11111",
+		RunningContext: &config.RunningContext{
+			PodNamespace: "default",
+			IPAddress:    "1.1.1.1",
+		},
+	}
+	p, err := NewXDSProvisioner(cfg)
+	assert.Nil(t, err)
+	gp := p.(*grpcProvisioner)
+	// As RDS request might be sent when handling LDS,
+	// here we create a buffered chan, to not block the
+	// send goroutine.
+	gp.sendCh = make(chan *discoveryv3.DiscoveryRequest, 1)
+
+	var (
+		any1 anypb.Any
+		dr   *discoveryv3.DiscoveryRequest
+	)
+
+	f1 := &hcmv3.HttpConnectionManager{
+		RouteSpecifier: &hcmv3.HttpConnectionManager_Rds{
+			Rds: &hcmv3.Rds{
+				RouteConfigName: "route1",
+			},
+		},
+	}
+	assert.Nil(t, anypb.MarshalFrom(&any1, f1, proto.MarshalOptions{}))
+	li := &listenerv3.Listener{
+		Name: "listener1",
+		Address: &corev3.Address{
+			Address: &corev3.Address_SocketAddress{
+				SocketAddress: &corev3.SocketAddress{
+					Address: "10.0.5.3",
+					PortSpecifier: &corev3.SocketAddress_PortValue{
+						PortValue: 8080,
+					},
+				},
+			},
+		},
+		FilterChains: []*listenerv3.FilterChain{
+			{
+				Filters: []*listenerv3.Filter{
+					{
+						Name: xdswellknown.HTTPConnectionManager,
+						ConfigType: &listenerv3.Filter_TypedConfig{
+							TypedConfig: &any1,
+						},
+					},
+				},
+			},
+		},
+	}
+	val1, err := proto.Marshal(li)
+	assert.Nil(t, err)
+
+	dr1 := &discoveryv3.DiscoveryResponse{
+		VersionInfo: "111",
+		TypeUrl:     types.ListenerUrl,
+		Resources: []*any.Any{
+			{
+				TypeUrl: types.ListenerUrl,
+				Value:   val1,
+			},
+		},
+	}
+
+	err = gp.translate(dr1)
+	assert.Nil(t, err)
+	select {
+	case dr = <-gp.sendCh:
+		break
+	case <-time.After(time.Second):
+		assert.FailNow(t, "DiscoveryRequest was not sent in time")
+	}
+	assert.Equal(t, dr.TypeUrl, types.RouteConfigurationUrl)
+	assert.Len(t, dr.ResourceNames, 1)
+	assert.Equal(t, dr.ResourceNames[0], "route1")
 }

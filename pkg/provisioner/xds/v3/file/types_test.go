@@ -190,7 +190,7 @@ func TestFileProvisionerGenerateEventsFromDiscoveryResponse(t *testing.T) {
 	events := p.generateEventsFromDiscoveryResponseV3("null", dr)
 	assert.Len(t, events, 2)
 	assert.Equal(t, events[0].Type, types.EventAdd)
-	assert.Equal(t, events[0].Object.(*apisix.Route).Name, "route1.vhost1.rc1")
+	assert.Equal(t, events[0].Object.(*apisix.Route).Name, "route1#vhost1#rc1")
 	assert.Nil(t, events[0].Tombstone)
 
 	assert.Equal(t, events[1].Type, types.EventAdd)
@@ -230,7 +230,7 @@ func TestFileProvisionerHandleFileEvent(t *testing.T) {
 	switch obj := events[0].Object.(type) {
 	case *apisix.Route:
 		assert.Equal(t, obj.Uris[0], "/foo")
-		assert.Equal(t, obj.Name, "route1.vhost1.rc1")
+		assert.Equal(t, obj.Name, "route1#vhost1#rc1")
 		assert.Equal(t, obj.UpstreamId, id.GenID("kubernetes.default.svc.cluster.local"))
 		assert.Equal(t, obj.Status, apisix.Route_Enable)
 	case *apisix.Upstream:
@@ -251,7 +251,7 @@ func TestFileProvisionerHandleFileEvent(t *testing.T) {
 	switch obj := events[0].Object.(type) {
 	case *apisix.Route:
 		assert.Equal(t, obj.Uris[0], "/foo")
-		assert.Equal(t, obj.Name, "route1.vhost1.rc1")
+		assert.Equal(t, obj.Name, "route1#vhost1#rc1")
 		assert.Equal(t, obj.UpstreamId, id.GenID("kubernetes.default.svc.cluster.local"))
 		assert.Equal(t, obj.Status, apisix.Route_Enable)
 	case *apisix.Upstream:

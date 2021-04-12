@@ -12,10 +12,10 @@ import (
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
 
-func (adaptor *adaptor) TranslateRouteConfiguration(r *routev3.RouteConfiguration) ([]*apisix.Route, error) {
+func (adaptor *adaptor) TranslateRouteConfiguration(r *routev3.RouteConfiguration, opts *TranslateOptions) ([]*apisix.Route, error) {
 	var routes []*apisix.Route
 	for _, vhost := range r.GetVirtualHosts() {
-		partial, err := adaptor.translateVirtualHost(r.Name, vhost)
+		partial, err := adaptor.translateVirtualHost(r.Name, vhost, opts)
 		if err != nil {
 			adaptor.logger.Errorw("failed to translate VirtualHost",
 				zap.Error(err),
@@ -24,11 +24,17 @@ func (adaptor *adaptor) TranslateRouteConfiguration(r *routev3.RouteConfiguratio
 		}
 		routes = append(routes, partial...)
 	}
+	if opts != nil && opts.RouteOriginalDestination != nil {
+		origDst, ok := opts.RouteOriginalDestination[r.Name]
+		if ok {
+			patchRoutesWithOriginalDestination(routes, origDst)
+		}
+	}
 	// TODO support Vhds.
 	return routes, nil
 }
 
-func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.VirtualHost) ([]*apisix.Route, error) {
+func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.VirtualHost, opts *TranslateOptions) ([]*apisix.Route, error) {
 	if prefix == "" {
 		prefix = "<anon>"
 	}
@@ -36,7 +42,8 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 
 	// FIXME Respect the CaseSensitive field.
 	for _, route := range vhost.GetRoutes() {
-		if !route.GetMatch().CaseSensitive.GetValue() {
+		sensitive := route.GetMatch().CaseSensitive
+		if sensitive != nil && !sensitive.GetValue() {
 			// Apache APISIX doens't support case insensitive URI match,
 			// so these routes should be neglected.
 			adaptor.logger.Warnw("ignore route with case insensitive match",
@@ -68,12 +75,25 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 			continue
 		}
 		vars = append(vars, queryVars...)
-		name = fmt.Sprintf("%s.%s.%s", name, vhost.GetName(), prefix)
+		name = fmt.Sprintf("%s#%s#%s", name, vhost.GetName(), prefix)
+		var (
+			hosts []string
+		)
+		for _, domain := range vhost.Domains {
+			if domain == "*" {
+				// If this route allows any domain to use, just don't set hosts
+				// in APISIX routes.
+				hosts = nil
+				break
+			} else {
+				hosts = append(hosts, domain)
+			}
+		}
 		r := &apisix.Route{
 			Name:       name,
 			Status:     1,
 			Id:         id.GenID(name),
-			Hosts:      vhost.Domains,
+			Hosts:      hosts,
 			Uris:       []string{uri},
 			UpstreamId: id.GenID(cluster),
 			Vars:       vars,
@@ -207,5 +227,13 @@ func getStringMatchValue(matcher *matcherv3.StringMatcher) string {
 		return pat.SafeRegex.Regex
 	default:
 		panic("unknown StringMatcher type")
+	}
+}
+
+func patchRoutesWithOriginalDestination(routes []*apisix.Route, origDst string) {
+	for _, r := range routes {
+		r.Vars = append(r.Vars, &apisix.Var{
+			Vars: []string{"connection_original_dst", "==", origDst},
+		})
 	}
 }

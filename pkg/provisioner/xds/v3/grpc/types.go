@@ -8,11 +8,15 @@ import (
 	"time"
 
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	listenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	discoveryv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
 	"go.uber.org/zap"
 	"google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/genproto/googleapis/rpc/status"
 	grpcp "google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	xdsv3 "github.com/api7/apisix-mesh-agent/pkg/adaptor/xds/v3"
@@ -40,10 +44,23 @@ type grpcProvisioner struct {
 	evChan       chan []types.Event
 	v3Adaptor    xdsv3.Adaptor
 
+	// find the listener (address) owner, an extra match
+	// condition will be patched to the APISIX route.
+	// "connection_original_dst == <ip>:<port>"
+	routeOwnership map[string]string
+
+	// static route configuration from listeners.
+	staticRouteConfigurations []*routev3.RouteConfiguration
+
+	// last state of routes.
 	routes []*apisix.Route
+	// last state of upstreams.
 	// map is necessary since EDS requires the original cluster
 	// by the name.
 	upstreams map[string]*apisix.Upstream
+
+	// this map enrolls all clusters that require further EDS requests.
+	edsRequiredClusters map[string]struct{}
 
 	sendCh chan *discoveryv3.DiscoveryRequest
 	recvCh chan *discoveryv3.DiscoveryResponse
@@ -68,19 +85,22 @@ func NewXDSProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
 		return nil, err
 	}
 
+	// TODO Configurable domain suffix.
+	dnsDomain := cfg.RunningContext.PodNamespace + ".svc.cluster.local"
 	node := &corev3.Node{
-		Id:            cfg.RunId,
+		Id:            util.GenNodeId(cfg.RunId, cfg.RunningContext.IPAddress, dnsDomain),
 		UserAgentName: fmt.Sprintf("apisix-mesh-agent/%s", version.Short()),
 	}
 	return &grpcProvisioner{
-		node:         node,
-		configSource: cs,
-		logger:       logger,
-		evChan:       make(chan []types.Event),
-		v3Adaptor:    adapter,
-		sendCh:       make(chan *discoveryv3.DiscoveryRequest),
-		recvCh:       make(chan *discoveryv3.DiscoveryResponse),
-		upstreams:    make(map[string]*apisix.Upstream),
+		node:                node,
+		configSource:        cs,
+		logger:              logger,
+		evChan:              make(chan []types.Event),
+		v3Adaptor:           adapter,
+		sendCh:              make(chan *discoveryv3.DiscoveryRequest),
+		recvCh:              make(chan *discoveryv3.DiscoveryResponse),
+		upstreams:           make(map[string]*apisix.Upstream),
+		edsRequiredClusters: make(map[string]struct{}),
 	}, nil
 }
 
@@ -91,6 +111,7 @@ func (p *grpcProvisioner) Channel() <-chan []types.Event {
 func (p *grpcProvisioner) Run(stop chan struct{}) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	defer close(p.evChan)
 	// TODO Support Credentials.
 	conn, err := grpcp.DialContext(ctx, p.configSource,
 		grpcp.WithInsecure(),
@@ -124,21 +145,16 @@ func (p *grpcProvisioner) Run(stop chan struct{}) error {
 func (p *grpcProvisioner) firstSend() {
 	dr1 := &discoveryv3.DiscoveryRequest{
 		Node:    p.node,
-		TypeUrl: types.RouteConfigurationUrl,
+		TypeUrl: types.ListenerUrl,
 	}
 	dr2 := &discoveryv3.DiscoveryRequest{
 		Node:    p.node,
 		TypeUrl: types.ClusterUrl,
 	}
-	dr3 := &discoveryv3.DiscoveryRequest{
-		Node:    p.node,
-		TypeUrl: types.ClusterLoadAssignmentUrl,
-	}
 
 	p.sendCh <- dr1
 	p.sendCh <- dr2
-	p.sendCh <- dr3
-	p.logger.Debugw("sent initial discovery requests for route and cluster")
+	p.logger.Debugw("sent initial discovery requests for listeners and clusters")
 }
 
 // sendLoop receives pending DiscoveryRequest objects and sends them to client.
@@ -178,7 +194,7 @@ func (p *grpcProvisioner) recvLoop(ctx context.Context, client discoveryv3.Aggre
 	condFunc := func() (bool, error) {
 		dr, err := client.Recv()
 		if err != nil {
-			p.logger.Errorw("failed receive discovery request",
+			p.logger.Errorw("failed to receive discovery response",
 				zap.Error(err),
 			)
 			return false, nil
@@ -238,11 +254,19 @@ func (p *grpcProvisioner) translate(resp *discoveryv3.DiscoveryResponse) error {
 		o      util.Manifest
 		events []types.Event
 	)
+	numEdsRquiredClusters := len(p.edsRequiredClusters)
 	// As we use ADS, the TypeUrl field indicates the resource type already.
 	switch resp.GetTypeUrl() {
 	case types.RouteConfigurationUrl:
 		for _, res := range resp.GetResources() {
 			partial, err := p.processRouteConfigurationV3(res)
+			if err != nil {
+				return err
+			}
+			m.Routes = append(m.Routes, partial...)
+		}
+		if p.staticRouteConfigurations != nil {
+			partial, err := p.processStaticRouteConfigurations(p.staticRouteConfigurations)
 			if err != nil {
 				return err
 			}
@@ -256,7 +280,19 @@ func (p *grpcProvisioner) translate(resp *discoveryv3.DiscoveryResponse) error {
 		for _, res := range resp.GetResources() {
 			ups, err := p.processClusterV3(res)
 			if err != nil {
-				return err
+				if err == xdsv3.ErrFeatureNotSupportedYet {
+					p.logger.Warnw("failed to translate Cluster to APISIX upstreams",
+						zap.Error(err),
+						zap.Any("cluster", res),
+					)
+					continue
+				} else {
+					p.logger.Errorw("failed to translate Cluster to APISIX upstreams",
+						zap.Error(err),
+						zap.Any("cluster", res),
+					)
+					return err
+				}
 			}
 			m.Upstreams = append(m.Upstreams, ups)
 			newUps[ups.Name] = ups
@@ -266,6 +302,13 @@ func (p *grpcProvisioner) translate(resp *discoveryv3.DiscoveryResponse) error {
 			o.Upstreams = append(o.Upstreams, ups)
 		}
 		p.upstreams = newUps
+		if len(p.edsRequiredClusters) != numEdsRquiredClusters {
+			p.logger.Infow("(re)launch EDS discovery request",
+				zap.Int("old_eds_required_clusters", numEdsRquiredClusters),
+				zap.Int("eds_required_clusters", len(p.edsRequiredClusters)),
+			)
+			p.sendEds()
+		}
 	case types.ClusterLoadAssignmentUrl:
 		for _, res := range resp.GetResources() {
 			ups, err := p.processClusterLoadAssignmentV3(res)
@@ -275,10 +318,48 @@ func (p *grpcProvisioner) translate(resp *discoveryv3.DiscoveryResponse) error {
 			p.upstreams[ups.Name] = ups
 			m.Upstreams = append(m.Upstreams, ups)
 		}
-
+	case types.ListenerUrl:
+		var (
+			rdsNames      []string
+			staticConfigs []*routev3.RouteConfiguration
+		)
+		routeOwnership := make(map[string]string)
+		for _, res := range resp.GetResources() {
+			var listener listenerv3.Listener
+			if err := anypb.UnmarshalTo(res, &listener, proto.UnmarshalOptions{}); err != nil {
+				p.logger.Errorw("failed to unmarshal listener v3",
+					zap.Error(err),
+					zap.Any("response", res),
+				)
+				return err
+			}
+			sockAddr := listener.Address.GetSocketAddress()
+			if sockAddr == nil || sockAddr.GetPortValue() == 0 {
+				// Only use listener which listens on socket.
+				// TODO Support named port.
+				continue
+			}
+			addr := fmt.Sprintf("%s:%d", sockAddr.GetAddress(), sockAddr.GetPortValue())
+			names, cfgs, err := p.v3Adaptor.CollectRouteNamesAndConfigs(&listener)
+			if err != nil {
+				return err
+			}
+			rdsNames = append(rdsNames, names...)
+			staticConfigs = append(staticConfigs, cfgs...)
+			for _, name := range names {
+				routeOwnership[name] = addr
+			}
+			for _, cfg := range cfgs {
+				routeOwnership[cfg.GetName()] = addr
+			}
+		}
+		p.staticRouteConfigurations = staticConfigs
+		p.routeOwnership = routeOwnership
+		p.trySendRds(rdsNames)
 	default:
 		return _errUnknownResourceTypeUrl
 	}
+
 	// Always generate update event for EDS.
 	if resp.GetTypeUrl() == types.ClusterLoadAssignmentUrl {
 		for _, ups := range m.Upstreams {
@@ -343,4 +424,33 @@ func (p *grpcProvisioner) generateEvents(m, o *util.Manifest) []types.Event {
 		events = append(events, updated.Events(types.EventUpdate)...)
 	}
 	return events
+}
+
+func (p *grpcProvisioner) sendEds() {
+	dr := &discoveryv3.DiscoveryRequest{
+		Node:    p.node,
+		TypeUrl: types.ClusterLoadAssignmentUrl,
+	}
+	for name := range p.edsRequiredClusters {
+		dr.ResourceNames = append(dr.ResourceNames, name)
+	}
+	p.logger.Debugw("sending EDS discovery request",
+		zap.Any("body", dr),
+	)
+	p.sendCh <- dr
+}
+
+func (p *grpcProvisioner) trySendRds(rdsNames []string) {
+	if len(rdsNames) == 0 {
+		return
+	}
+	dr := &discoveryv3.DiscoveryRequest{
+		Node:          p.node,
+		ResourceNames: rdsNames,
+		TypeUrl:       types.RouteConfigurationUrl,
+	}
+	p.logger.Debugw("sending RDS discovery request",
+		zap.Any("body", dr),
+	)
+	p.sendCh <- dr
 }

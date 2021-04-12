@@ -28,7 +28,11 @@ type Var struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Vars []string `protobuf:"bytes,1,rep,name=vars,proto3" json:"vars,omitempty"`
+	// vars in Route is an two-dimensional array which cannot be represented
+	// directly in protobuf, here we use https://github.com/favadi/protoc-go-inject-tag
+	// to hack the ultimate pb.go.
+	// @inject_tag: json:",inline,omitempty"
+	Vars []string `protobuf:"bytes,1,rep,name=vars,proto3" json:",inline,omitempty"`
 }
 
 func (x *Var) Reset() {

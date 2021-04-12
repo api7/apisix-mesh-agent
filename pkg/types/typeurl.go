@@ -7,4 +7,6 @@ var (
 	ClusterUrl = "type.googleapis.com/envoy.config.cluster.v3.Cluster"
 	// ClusterLoadAssignmentUrl is the Cluster type url.
 	ClusterLoadAssignmentUrl = "type.googleapis.com/envoy.config.endpoint.v3.ClusterLoadAssignment"
+	// ListenerUrl is the Listener type url.
+	ListenerUrl = "type.googleapis.com/envoy.config.listener.v3.Listener"
 )
