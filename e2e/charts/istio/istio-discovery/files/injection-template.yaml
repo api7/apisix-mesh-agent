@@ -1,0 +1,59 @@
+metadata:
+  labels:
+    service.istio.io/canonical-name: {{ index .ObjectMeta.Labels `service.istio.io/canonical-name` | default (index .ObjectMeta.Labels `app.kubernetes.io/name`) | default (index .ObjectMeta.Labels `app`) | default .DeploymentMeta.Name  | quote }}
+    service.istio.io/canonical-revision: {{ index .ObjectMeta.Labels `service.istio.io/canonical-revision` | default (index .ObjectMeta.Labels `app.kubernetes.io/version`) | default (index .ObjectMeta.Labels `version`) | default "latest"  | quote }}
+    istio.io/rev: {{ .Revision | default "default" | quote }}
+spec:
+  initContainers:
+  - name: istio-init
+    image: "{{ .Values.global.hub }}/{{ .Values.global.proxy_init.image }}:{{ .Values.global.tag }}"
+    args:
+    - iptables
+    - --apisix-user
+    - root
+    - --inbound-ports
+    - "*"
+    - --outbound-ports
+    - "*"
+    imagePullPolicy: "{{ valueOrDefault .Values.global.imagePullPolicy `Always` }}"
+    securityContext:
+      allowPrivilegeEscalation: {{ .Values.global.proxy.privileged }}
+      privileged: {{ .Values.global.proxy.privileged }}
+      capabilities:
+        add:
+        - NET_ADMIN
+        - NET_RAW
+        drop:
+        - ALL
+      readOnlyRootFilesystem: false
+      runAsGroup: 0
+      runAsNonRoot: false
+      runAsUser: 0
+    restartPolicy: Always
+  containers:
+  - name: istio-proxy
+    image: "{{ .Values.global.hub }}/{{ .Values.global.proxy.image }}:{{ .Values.global.tag }}"
+    ports:
+    - containerPort: 9080
+      protocol: TCP
+      name: apisix-http
+    args:
+    - sidecar
+    - --run-mode
+    - bundle
+    - --provisioner
+    - xds-v3-grpc
+    - --log-level
+    - debug
+    - --xds-config-source
+    - "{{ .Values.global.remotePilotAddress }}"
+    env:
+    - name: POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    imagePullPolicy: "{{ valueOrDefault .Values.global.imagePullPolicy `Always` }}"

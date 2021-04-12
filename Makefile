@@ -11,6 +11,7 @@ VERSION ?= 0.0.0
 GITSHA ?= $(shell git rev-parse --short=7 HEAD)
 PWD ?= $(shell pwd)
 DATE ?= $(shell date +%s)
+DOCKER_IMAGE_TAG ?= dev
 
 VERSYM=github.com/api7/apisix-mesh-agent/pkg/version._version
 GITSHASYM=github.com/api7/apisix-mesh-agent/pkg/version._gitRevision
@@ -31,6 +32,9 @@ lint:
 ### gofmt:            Format all go codes
 gofmt:
 	find . -type f -name "*.go" | xargs gofmt -w -s
+
+build-image:
+	docker build -t api7/apisix-mesh-agent:$(DOCKER_IMAGE_TAG) --build-arg ENABLE_PROXY=true .
 
 ### unit-test:        Run unit test cases
 unit-test:

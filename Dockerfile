@@ -6,7 +6,7 @@ LABEL maintainer="tokers@apache.org"
 ADD nginx /nginx
 
 # Docker Build Arguments
-ARG APISIX_VERSION="2.4"
+ARG APISIX_VERSION="2.5"
 ARG APISIX_MESH_AGENT_VERSION="0.0.1"
 ARG ENABLE_PROXY=false
 ARG LUAROCKS_VERSION="3.4.0"
@@ -150,7 +150,7 @@ RUN apk add --no-cache --virtual .build-deps \
 # Add additional binaries into PATH for convenience
 ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
 
-# Step2 , building LuaRocks
+# Step 2, building LuaRocks
 RUN cd /tmp \
     && wget https://github.com/luarocks/luarocks/archive/v${LUAROCKS_VERSION}.tar.gz \
     && tar xf v${LUAROCKS_VERSION}.tar.gz \
