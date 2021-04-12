@@ -26,7 +26,10 @@ func (p *grpcProvisioner) processRouteConfigurationV3(res *any.Any) ([]*apisix.R
 		return nil, err
 	}
 
-	routes, err := p.v3Adaptor.TranslateRouteConfiguration(&route)
+	opts := &xdsv3.TranslateOptions{
+		RouteOriginalDestination: p.routeOwnership,
+	}
+	routes, err := p.v3Adaptor.TranslateRouteConfiguration(&route, opts)
 	if err != nil {
 		p.logger.Errorw("failed to translate RouteConfiguration to APISIX routes",
 			zap.Error(err),
@@ -41,8 +44,11 @@ func (p *grpcProvisioner) processStaticRouteConfigurations(rcs []*routev3.RouteC
 	var (
 		routes []*apisix.Route
 	)
+	opts := &xdsv3.TranslateOptions{
+		RouteOriginalDestination: p.routeOwnership,
+	}
 	for _, rc := range rcs {
-		route, err := p.v3Adaptor.TranslateRouteConfiguration(rc)
+		route, err := p.v3Adaptor.TranslateRouteConfiguration(rc, opts)
 		if err != nil {
 			p.logger.Errorw("failed to translate RouteConfiguration to APISIX routes",
 				zap.Error(err),

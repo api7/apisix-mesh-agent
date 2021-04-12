@@ -12,10 +12,10 @@ import (
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
 
-func (adaptor *adaptor) TranslateRouteConfiguration(r *routev3.RouteConfiguration) ([]*apisix.Route, error) {
+func (adaptor *adaptor) TranslateRouteConfiguration(r *routev3.RouteConfiguration, opts *TranslateOptions) ([]*apisix.Route, error) {
 	var routes []*apisix.Route
 	for _, vhost := range r.GetVirtualHosts() {
-		partial, err := adaptor.translateVirtualHost(r.Name, vhost)
+		partial, err := adaptor.translateVirtualHost(r.Name, vhost, opts)
 		if err != nil {
 			adaptor.logger.Errorw("failed to translate VirtualHost",
 				zap.Error(err),
@@ -24,11 +24,17 @@ func (adaptor *adaptor) TranslateRouteConfiguration(r *routev3.RouteConfiguratio
 		}
 		routes = append(routes, partial...)
 	}
+	if opts != nil && opts.RouteOriginalDestination != nil {
+		origDst, ok := opts.RouteOriginalDestination[r.Name]
+		if ok {
+			patchRoutesWithOriginalDestination(routes, origDst)
+		}
+	}
 	// TODO support Vhds.
 	return routes, nil
 }
 
-func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.VirtualHost) ([]*apisix.Route, error) {
+func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.VirtualHost, opts *TranslateOptions) ([]*apisix.Route, error) {
 	if prefix == "" {
 		prefix = "<anon>"
 	}
@@ -221,5 +227,13 @@ func getStringMatchValue(matcher *matcherv3.StringMatcher) string {
 		return pat.SafeRegex.Regex
 	default:
 		panic("unknown StringMatcher type")
+	}
+}
+
+func patchRoutesWithOriginalDestination(routes []*apisix.Route, origDst string) {
+	for _, r := range routes {
+		r.Vars = append(r.Vars, &apisix.Var{
+			Vars: []string{"connection_original_dst", "==", origDst},
+		})
 	}
 }
