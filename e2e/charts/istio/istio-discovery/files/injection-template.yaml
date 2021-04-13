@@ -10,11 +10,19 @@ spec:
     args:
     - iptables
     - --apisix-user
-    - root
+    - nobody
+    - --apisix-inbound-capture-port
+    - "9081"
+    - --apisix-port
+    - "9080"
     - --inbound-ports
     - "*"
+    - --inbound-exclude-ports
+    - "17739"
     - --outbound-ports
     - "*"
+    - --outbound-exclude-ports
+    - "17739,15010"
     imagePullPolicy: "{{ valueOrDefault .Values.global.imagePullPolicy `Always` }}"
     securityContext:
       allowPrivilegeEscalation: {{ .Values.global.proxy.privileged }}
@@ -36,7 +44,13 @@ spec:
     ports:
     - containerPort: 9080
       protocol: TCP
-      name: apisix-http
+      name: http-outbound
+    - containerPort: 9081
+      protocol: TCP
+      name: http-inbound
+    - containerPort: 17739
+      protocol: TCP
+      name: agent
     args:
     - sidecar
     - --run-mode
@@ -46,7 +60,11 @@ spec:
     - --log-level
     - debug
     - --xds-config-source
-    - "grpc://istiod.{{ .Values.global.istioNamespace }}.svc.{{ .Values.global.proxy.clusterDomain }}"
+    - "grpc://istiod.{{ .Values.global.istioNamespace }}.svc.{{ .Values.global.proxy.clusterDomain }}:15010"
+    - --apisix-bin-path
+    - /usr/bin/apisix
+    - --grpc-listen
+    - 0.0.0.0:17739
     env:
     - name: POD_NAME
       valueFrom:

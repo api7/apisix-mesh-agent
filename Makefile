@@ -34,7 +34,10 @@ gofmt:
 	find . -type f -name "*.go" | xargs gofmt -w -s
 
 build-image:
-	docker build -t api7/apisix-mesh-agent:$(DOCKER_IMAGE_TAG) --build-arg ENABLE_PROXY=true .
+	docker build \
+		-t api7/apisix-mesh-agent:$(DOCKER_IMAGE_TAG) \
+		--build-arg ENABLE_PROXY=true \
+		--build-arg LUAROCKS_SERVER=https://luarocks.cn .
 
 ### unit-test:        Run unit test cases
 unit-test:
