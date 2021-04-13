@@ -32,7 +32,7 @@ func NewSetupCommand() *cobra.Command {
 Intercept inbound TCP traffic which destination port is 80 to 9080 (apisix port), run:
 	apisix-mesh-agent iptables --apisix-port 9080 --inbound-ports 80
 
-To intercep all inbound TCP traffic, just use "*" as the value of --inbound-ports option. In addition,
+To intercept all inbound TCP traffic, just use "*" as the value of --inbound-ports option. In addition,
 if outbound TCP traffic (say the destination port is 80) is desired to be intercepted, just run:
 	apisix-mesh-agent iptables --apisix-port 9080 --inbound-ports 80 --outbound-ports 80
 
@@ -70,6 +70,9 @@ if outbound TCP traffic (say the destination port is 80) is desired to be interc
 	cmd.PersistentFlags().StringVar(&cfg.InboundPortsInclude, "inbound-ports", "",
 		"comma separated list of inbound ports for which traffic is to be redirected, the wildcard character \"*\" can be used to configure redirection for all ports, empty list will disable the redirection")
 	cmd.PersistentFlags().StringVar(&cfg.OutboundPortsInclude, "outbound-ports", "", "comma separated list of outbound ports for which traffic is to be redirected")
+	cmd.PersistentFlags().StringVar(&cfg.InboundPortsExclude, "inbound-exclude-ports", "", "comma separated list of inbound ports to be excluded from forwarding to APISIX, only in effective if value of --inbound-ports option is \"*\"")
+	cmd.PersistentFlags().StringVar(&cfg.OutboundPortsExclude, "outbound-exclude-ports", "", "comma separated list of outbound ports to be excluded from forwarding to APISIX, only in effective if value of --outbound-ports option is \"*\"")
+
 	cmd.PersistentFlags().BoolVar(&cfg.DryRun, "dry-run", false, "dry run mode")
 	cmd.PersistentFlags().StringVar(&proxyUser, "apisix-user", "nobody", "user to run APISIX")
 
@@ -101,6 +104,11 @@ func (ic *iptablesConstructor) insertInboundRules() {
 	if ic.cfg.InboundPortsInclude == "*" {
 		// Makes sure SSH is not redirected
 		ic.iptables.AppendRuleV4(types.InboundChain, "nat", "-p", "tcp", "--dport", "22", "-j", "RETURN")
+		if ic.cfg.InboundPortsExclude != "" {
+			for _, port := range split(ic.cfg.InboundPortsExclude) {
+				ic.iptables.AppendRuleV4(types.InboundChain, "nat", "-p", "tcp", "--dport", port, "-j", "RETURN")
+			}
+		}
 		ic.iptables.AppendRuleV4(types.InboundChain, "nat", "-p", "tcp", "-j", types.InboundRedirectChain)
 	} else {
 		for _, port := range split(ic.cfg.InboundPortsInclude) {
@@ -112,10 +120,27 @@ func (ic *iptablesConstructor) insertInboundRules() {
 }
 
 func (ic *iptablesConstructor) insertOutboundRules() {
-	for _, port := range split(ic.cfg.OutboundPortsInclude) {
+	if ic.cfg.OutboundPortsInclude == "" {
+		return
+	}
+	if ic.cfg.OutboundPortsInclude == "*" {
+		if ic.cfg.OutboundPortsExclude != "" {
+			for _, port := range split(ic.cfg.OutboundPortsExclude) {
+				ic.iptables.AppendRuleV4(
+					types.OutputChain, "nat", "-p", "tcp", "--dport", port, "-j", "RETURN",
+				)
+			}
+		}
 		ic.iptables.AppendRuleV4(
-			types.OutputChain, "nat", "-p", "tcp", "--dport", port, "-j", types.RedirectChain,
+			types.OutputChain, "nat", "-p", "tcp", "-j", types.RedirectChain,
 		)
+	} else {
+		for _, port := range split(ic.cfg.OutboundPortsInclude) {
+			ic.iptables.AppendRuleV4(
+				types.OutputChain, "nat", "-p", "tcp", "--dport", port, "-j", types.RedirectChain,
+			)
+		}
+
 	}
 }
 
