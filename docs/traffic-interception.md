@@ -113,7 +113,42 @@ iptables -t nat -A APISIX_INBOUND -p tcp --dport 443 -j APISIX_INBOUND_REDIRECT
 iptables -t nat -A OUTPUT -p tcp --dport 80 -j APISIX_REDIRECT
 ```
 
-5. Cleanup rules
+Note the `--uid-owner` and `--gid-owner` values might be different, it depends on which user you specified to run the proxy component.
+
+5. Forward all inbound traffic except port `2379`
+
+```shell
+./apisix-mesh-agent iptables --dry-run --inbound-ports * --inbound-exclude-ports 2379
+iptables -t nat -N APISIX_REDIRECT
+iptables -t nat -N APISIX_INBOUND_REDIRECT
+iptables -t nat -N APISIX_INBOUND
+iptables -t nat -A APISIX_REDIRECT -p tcp -j REDIRECT --to-ports 9080
+iptables -t nat -A APISIX_INBOUND_REDIRECT -p tcp -j REDIRECT --to-ports 9081
+iptables -t nat -A OUTPUT -o lo ! -d 127.0.0.1/32 -m owner --uid-owner 4294967294 -j RETURN
+iptables -t nat -A OUTPUT -m owner --gid-owner 4294967294 -j RETURN
+iptables -t nat -A PREROUTING -p tcp -j APISIX_INBOUND
+iptables -t nat -A APISIX_INBOUND -p tcp --dport 22 -j RETURN
+iptables -t nat -A APISIX_INBOUND -p tcp --dport 2379 -j RETURN
+iptables -t nat -A APISIX_INBOUND -p tcp -j APISIX_INBOUND_REDIRECT
+```
+
+Note the `--uid-owner` and `--gid-owner` values might be different, it depends on which user you specified to run the proxy component.
+
+6. Forward all outbound traffic except port `15010`
+
+```shell
+./apisix-mesh-agent iptables --dry-run --outbound-ports * --outbound-exclude-ports 15010
+iptables -t nat -N APISIX_REDIRECT
+iptables -t nat -N APISIX_INBOUND_REDIRECT
+iptables -t nat -A APISIX_REDIRECT -p tcp -j REDIRECT --to-ports 9080
+iptables -t nat -A APISIX_INBOUND_REDIRECT -p tcp -j REDIRECT --to-ports 9081
+iptables -t nat -A OUTPUT -o lo ! -d 127.0.0.1/32 -m owner --uid-owner 4294967294 -j RETURN
+iptables -t nat -A OUTPUT -m owner --gid-owner 4294967294 -j RETURN
+iptables -t nat -A OUTPUT -p tcp --dport 15010 -j RETURN
+iptables -t nat -A OUTPUT -p tcp -j APISIX_REDIRECT
+```
+
+7. Cleanup rules
 
 ```shell
 ./apisix-mesh-agent cleanup-iptables --dry-run
