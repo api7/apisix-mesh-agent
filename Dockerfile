@@ -82,6 +82,7 @@ RUN apk add --no-cache --virtual .build-deps \
         libxslt-dev \
         linux-headers \
         make \
+        musl-dev \
         perl-dev \
         readline-dev \
         zlib-dev \

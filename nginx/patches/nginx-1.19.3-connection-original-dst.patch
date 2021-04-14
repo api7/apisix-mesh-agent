@@ -32,7 +32,7 @@ index e067cf0c..33aa042e 100644
  static ngx_int_t ngx_http_variable_connection_requests(ngx_http_request_t *r,
      ngx_http_variable_value_t *v, uintptr_t data);
  
-+#if (NGX_HTTP_NETFILTER_IPV4)
++#if (NGX_HAVE_NETFILTER_IPV4)
 +static ngx_int_t ngx_http_variable_connection_dst(ngx_http_request_t *r,
 +    ngx_http_variable_value_t *v, uintptr_t data);
 +#endif
@@ -44,7 +44,7 @@ index e067cf0c..33aa042e 100644
      { ngx_string("connection_requests"), NULL,
        ngx_http_variable_connection_requests, 0, 0, 0 },
  
-+#if (NGX_HTTP_NETFILTER_IPV4)
++#if (NGX_HAVE_NETFILTER_IPV4)
 +    { ngx_string("connection_original_dst"), NULL,
 +      ngx_http_variable_connection_dst, 0, 0, 0 },
 +#endif
@@ -56,7 +56,7 @@ index e067cf0c..33aa042e 100644
  }
  
  
-+#if (NGX_HTTP_NETFILTER_IPV4)
++#if (NGX_HAVE_NETFILTER_IPV4)
 +static ngx_int_t
 +ngx_http_variable_connection_dst(ngx_http_request_t *r,
 +    ngx_http_variable_value_t *v, uintptr_t data)
