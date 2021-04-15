@@ -2,6 +2,7 @@ package etcdv3
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -10,7 +11,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/api7/apisix-mesh-agent/pkg/cache"
 )
@@ -19,10 +19,6 @@ var (
 	_errInternalError   = status.New(codes.Internal, "internal error").Err()
 	_emptyRangeResponse = &etcdserverpb.RangeResponse{
 		Header: &etcdserverpb.ResponseHeader{},
-	}
-
-	_pbjsonMarshalOpts = &protojson.MarshalOptions{
-		UseEnumNumbers: true,
 	}
 )
 
@@ -143,7 +139,7 @@ func (e *etcdV3) findExactKey(key []byte) (*etcdserverpb.RangeResponse, error) {
 			}
 			return nil, _errInternalError
 		}
-		value, err = _pbjsonMarshalOpts.Marshal(route)
+		value, err = json.Marshal(route)
 		if err != nil {
 			e.logger.Errorw("failed to marshal route",
 				zap.Any("route", route),
@@ -162,7 +158,7 @@ func (e *etcdV3) findExactKey(key []byte) (*etcdserverpb.RangeResponse, error) {
 			}
 			return nil, _errInternalError
 		}
-		value, err = _pbjsonMarshalOpts.Marshal(ups)
+		value, err = json.Marshal(ups)
 		if err != nil {
 			e.logger.Errorw("failed to marshal upstream",
 				zap.Any("upstream", ups),
@@ -207,7 +203,7 @@ func (e *etcdV3) findAllKeys(key []byte) (*etcdserverpb.RangeResponse, error) {
 		}
 		for _, r := range routes {
 			itemKey := e.keyPrefix + "/routes/" + r.Id
-			value, err := _pbjsonMarshalOpts.Marshal(r)
+			value, err := json.Marshal(r)
 			if err != nil {
 				e.logger.Errorw("failed to marshal route",
 					zap.Error(err),
@@ -227,7 +223,7 @@ func (e *etcdV3) findAllKeys(key []byte) (*etcdserverpb.RangeResponse, error) {
 		}
 		for _, u := range upstreams {
 			itemKey := e.keyPrefix + "/upstreams/" + u.Id
-			value, err := _pbjsonMarshalOpts.Marshal(u)
+			value, err := json.Marshal(u)
 			if err != nil {
 				e.logger.Errorw("failed to marshal upstream",
 					zap.Error(err),

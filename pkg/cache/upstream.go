@@ -30,7 +30,13 @@ func (r *upstream) Get(id string) (*apisix.Upstream, error) {
 		return nil, ErrObjectNotFound
 	}
 	// Never return the original one to avoid race conditions.
-	return proto.Clone(obj).(*apisix.Upstream), nil
+	obj = proto.Clone(obj).(*apisix.Upstream)
+	// FIXME It seems that proto.Clone cannot copy the empty slice.
+	if obj.Nodes == nil {
+		obj.Nodes = []*apisix.Node{}
+	}
+
+	return obj, nil
 }
 
 func (r *upstream) List() ([]*apisix.Upstream, error) {
@@ -38,7 +44,12 @@ func (r *upstream) List() ([]*apisix.Upstream, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	for _, obj := range r.store {
-		objs = append(objs, proto.Clone(obj).(*apisix.Upstream))
+		obj = proto.Clone(obj).(*apisix.Upstream)
+		// FIXME It seems that proto.Clone cannot copy the empty slice.
+		if obj.Nodes == nil {
+			obj.Nodes = []*apisix.Node{}
+		}
+		objs = append(objs, obj)
 	}
 	return objs, nil
 }

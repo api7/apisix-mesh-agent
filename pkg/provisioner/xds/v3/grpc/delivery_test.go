@@ -232,10 +232,6 @@ func TestProcessClusterLoadAssignment(t *testing.T) {
 		},
 	}
 	p.upstreams[ups.Name] = ups
-	// Reject since the cluster already has endpoints.
-	ups, err = p.processClusterLoadAssignmentV3(&opaque)
-	assert.Nil(t, ups)
-	assert.Equal(t, err, _errRedundantEDS)
 
 	ups = &apisix.Upstream{
 		Name: "httpbin.default.svc.cluster.local",

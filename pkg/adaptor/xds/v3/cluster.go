@@ -12,8 +12,9 @@ import (
 
 func (adaptor *adaptor) TranslateCluster(c *clusterv3.Cluster) (*apisix.Upstream, error) {
 	ups := &apisix.Upstream{
-		Name: c.Name,
-		Id:   id.GenID(c.Name),
+		Name:  c.Name,
+		Id:    id.GenID(c.Name),
+		Nodes: []*apisix.Node{},
 	}
 	if err := adaptor.translateClusterLbPolicy(c, ups); err != nil {
 		return nil, err
