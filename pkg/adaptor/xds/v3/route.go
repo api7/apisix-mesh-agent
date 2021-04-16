@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/api7/apisix-mesh-agent/pkg/id"
+	"github.com/api7/apisix-mesh-agent/pkg/set"
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
 
@@ -76,24 +77,25 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 		}
 		vars = append(vars, queryVars...)
 		name = fmt.Sprintf("%s#%s#%s", name, vhost.GetName(), prefix)
-		var (
-			hosts []string
-		)
+		hosts := set.StringSet{}
 		for _, domain := range vhost.Domains {
 			if domain == "*" {
 				// If this route allows any domain to use, just don't set hosts
 				// in APISIX routes.
-				hosts = nil
+				hosts = set.StringSet{}
 				break
 			} else {
-				hosts = append(hosts, domain)
+				if pos := strings.Index(domain, ":"); pos != -1 {
+					domain = domain[:pos]
+				}
+				hosts.Add(domain)
 			}
 		}
 		r := &apisix.Route{
 			Name:       name,
 			Status:     1,
 			Id:         id.GenID(name),
-			Hosts:      hosts,
+			Hosts:      hosts.Strings(),
 			Uris:       []string{uri},
 			UpstreamId: id.GenID(cluster),
 			Vars:       vars,

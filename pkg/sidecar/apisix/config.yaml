@@ -16,6 +16,7 @@ nginx_config:                     # config for render the template to generate n
               proxy_set_header Connection "";
               proxy_set_header Host $http_host;
               proxy_pass http://$connection_original_dst;
+              add_header Via APISIX always;
           }
     }
 etcd:

@@ -10,6 +10,5 @@ message Var {
   // vars in Route is an two-dimensional array which cannot be represented
   // directly in protobuf, here we use https://github.com/favadi/protoc-go-inject-tag
   // to hack the ultimate pb.go.
-  // @inject_tag: json:",inline,omitempty"
   repeated string vars = 1 [(validate.rules).repeated = {min_items: 2, max_items: 4}];
 }
