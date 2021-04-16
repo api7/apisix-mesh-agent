@@ -109,6 +109,7 @@ func (e *etcdV3) Serve(listener net.Listener) error {
 	e.grpcSrv = grpcSrv
 	etcdserverpb.RegisterKVServer(grpcSrv, e)
 	etcdserverpb.RegisterWatchServer(grpcSrv, e)
+	etcdserverpb.RegisterLeaseServer(grpcSrv, e)
 	if gwmux, err := e.registerGateway(listener.Addr().String()); err != nil {
 		e.logger.Errorw("failed to register gateway",
 			zap.Error(err),

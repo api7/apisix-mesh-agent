@@ -62,6 +62,8 @@ func (adaptor *adaptor) translateClusterTimeoutSettings(c *clusterv3.Cluster, up
 	if c.GetConnectTimeout() != nil {
 		ups.Timeout = &apisix.Upstream_Timeout{
 			Connect: float64((*c.GetConnectTimeout()).Seconds),
+			Read:    60,
+			Send:    60,
 		}
 	}
 	return nil

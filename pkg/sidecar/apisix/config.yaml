@@ -24,3 +24,6 @@ etcd:
     - "http://{{ .GRPCListen }}"     # multiple etcd address, if your etcd cluster enables TLS, please use https scheme,
     # e.g. "https://127.0.0.1:2379".
   prefix: "{{ .EtcdKeyPrefix }}"               # apisix configurations prefix
+plugins:
+  - cors
+  - request-id
