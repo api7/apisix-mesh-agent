@@ -2,6 +2,7 @@ package etcdv3
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -129,7 +130,7 @@ func (ws *watchStream) findAllRoutes(minRev int64) ([]*mvccpb.KeyValue, error) {
 			continue
 		}
 		if m.modRevision >= minRev {
-			value, err := _pbjsonMarshalOpts.Marshal(r)
+			value, err := json.Marshal(r)
 			if err != nil {
 				ws.etcd.logger.Errorw("protojson marshal failure",
 					zap.Error(err),
@@ -169,7 +170,7 @@ func (ws *watchStream) findAllUpstreams(minRev int64) ([]*mvccpb.KeyValue, error
 			continue
 		}
 		if m.modRevision >= minRev {
-			value, err := _pbjsonMarshalOpts.Marshal(u)
+			value, err := json.Marshal(u)
 			if err != nil {
 				ws.etcd.logger.Errorw("protojson marshal failure",
 					zap.Error(err),

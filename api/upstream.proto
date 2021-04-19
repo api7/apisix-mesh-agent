@@ -58,10 +58,9 @@ message Upstream {
   string desc = 11 [(validate.rules).string.max_len = 256];
   // The upstream id.
   string id = 12;
-  // Health check settings.
-  HealthCheck checks = 13;
   // Upstream nodes.
-  repeated Node nodes = 14;
+  // @inject_tag: json:"nodes"
+  repeated Node nodes = 13;
 }
 
 // [#protodoc-title: The Apache APISIX Upstream Health Check configuration]

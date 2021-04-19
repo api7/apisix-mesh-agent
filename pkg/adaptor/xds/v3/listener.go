@@ -42,7 +42,7 @@ func (adaptor *adaptor) CollectRouteNamesAndConfigs(l *listenerv3.Listener) ([]s
 			}
 		}
 	}
-	log.Debugw("got route names and config from listener",
+	adaptor.logger.Debugw("got route names and config from listener",
 		zap.Strings("route_names", rdsNames),
 		zap.Any("route_configs", staticConfigs),
 		zap.Any("listener", l),

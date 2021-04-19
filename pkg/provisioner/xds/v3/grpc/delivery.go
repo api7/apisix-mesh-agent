@@ -80,7 +80,7 @@ func (p *grpcProvisioner) processClusterV3(res *any.Any) (*apisix.Upstream, erro
 		p.logger.Warnw("cluster depends on another EDS config, an upstream without nodes setting was generated",
 			zap.Any("upstream", ups),
 		)
-		p.edsRequiredClusters[ups.Name] = struct{}{}
+		p.edsRequiredClusters.Add(ups.Name)
 	}
 	return ups, nil
 }
@@ -105,13 +105,6 @@ func (p *grpcProvisioner) processClusterLoadAssignmentV3(res *any.Any) (*apisix.
 			zap.Any("resource", res),
 		)
 		return nil, _errUnknownClusterName
-	}
-	if len(ups.Nodes) > 0 {
-		p.logger.Warnw("found redundant ClusterLoadAssignment resource",
-			zap.String("reason", "Cluster already has load assignment"),
-			zap.Any("resource", res),
-		)
-		return nil, _errRedundantEDS
 	}
 
 	nodes, err := p.v3Adaptor.TranslateClusterLoadAssignment(&cla)

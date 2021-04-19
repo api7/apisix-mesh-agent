@@ -6,10 +6,11 @@ LABEL maintainer="tokers@apache.org"
 ADD nginx /nginx
 
 # Docker Build Arguments
-ARG APISIX_VERSION="2.4"
+ARG APISIX_VERSION="2.5"
 ARG APISIX_MESH_AGENT_VERSION="0.0.1"
 ARG ENABLE_PROXY=false
 ARG LUAROCKS_VERSION="3.4.0"
+ARG LUAROCKS_SERVER="https://luarocks.org"
 ARG RESTY_IMAGE_BASE="alpine"
 ARG RESTY_IMAGE_TAG="3.12"
 ARG RESTY_VERSION="1.19.3.1"
@@ -81,6 +82,7 @@ RUN apk add --no-cache --virtual .build-deps \
         libxslt-dev \
         linux-headers \
         make \
+        musl-dev \
         perl-dev \
         readline-dev \
         zlib-dev \
@@ -150,7 +152,7 @@ RUN apk add --no-cache --virtual .build-deps \
 # Add additional binaries into PATH for convenience
 ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
 
-# Step2 , building LuaRocks
+# Step 2, building LuaRocks
 RUN cd /tmp \
     && wget https://github.com/luarocks/luarocks/archive/v${LUAROCKS_VERSION}.tar.gz \
     && tar xf v${LUAROCKS_VERSION}.tar.gz \
@@ -175,7 +177,7 @@ RUN set -x \
     && mkdir ~/.luarocks \
     && luarocks config variables.OPENSSL_LIBDIR /usr/local/openresty/openssl/lib \
     && luarocks config variables.OPENSSL_INCDIR /usr/local/openresty/openssl/include \
-    && luarocks install https://github.com/apache/apisix/raw/master/rockspec/apisix-${APISIX_VERSION}-0.rockspec --tree=/usr/local/apisix/deps \
+    && luarocks install https://github.com/apache/apisix/raw/master/rockspec/apisix-${APISIX_VERSION}-0.rockspec --tree=/usr/local/apisix/deps --server ${LUAROCKS_SERVER} \
     && cp -v /usr/local/apisix/deps/lib/luarocks/rocks-5.1/apisix/${APISIX_VERSION}-0/bin/apisix /usr/bin/ \
     && (if [ "$APISIX_VERSION" = "master" ] || [ "$APISIX_VERSION" \> "2.2" ]; then echo 'use shell ';else bin='#! /usr/local/openresty/luajit/bin/luajit\npackage.path = "/usr/local/apisix/?.lua;" .. package.path'; sed -i "1s@.*@$bin@" /usr/bin/apisix ; fi;) \
     && mv /usr/local/apisix/deps/share/lua/5.1/apisix /usr/local/apisix

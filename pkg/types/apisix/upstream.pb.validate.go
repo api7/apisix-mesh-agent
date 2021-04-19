@@ -123,16 +123,6 @@ func (m *Upstream) Validate() error {
 
 	// no validation rules for Id
 
-	if v, ok := interface{}(m.GetChecks()).(interface{ Validate() error }); ok {
-		if err := v.Validate(); err != nil {
-			return UpstreamValidationError{
-				field:  "Checks",
-				reason: "embedded message failed validation",
-				cause:  err,
-			}
-		}
-	}
-
 	for idx, item := range m.GetNodes() {
 		_, _ = idx, item
 
