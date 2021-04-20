@@ -35,8 +35,7 @@ var _ = ginkgo.Describe("[basic proxy functions]", func() {
 		expect, err := f.NewHTTPClientToNginxService()
 		g.Expect(err).ShouldNot(gomega.HaveOccurred())
 
-		// As we use the tunnel to access nginx, traffic won't be intercepted to the inbound APISIX.
-		resp := expect.GET("/status/200").WithHeader("Host", "httpbin.org").Expect()
+		resp := expect.GET("/status/200").WithHeader("Host", fqdn).Expect()
 		resp.Status(404)
 		// Request was terminated by APISIX itself.
 		resp.Header("Server").Contains("APISIX")
@@ -58,5 +57,13 @@ spec:
 `
 		err = f.CreateResourceFromString(fmt.Sprintf(vs, fqdn, fqdn))
 		g.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+		resp = expect.GET("/ip").WithHeader("Host", fqdn).Expect()
+		resp.Status(200)
+		// Inbound APISIX will add a via header which value is APISIX.
+		// As we use the tunnel to access nginx, traffic won't be intercepted to the inbound APISIX.
+		// So here only one Via header will be appended.
+		resp.Header("Via").Equal("APISIX")
+		resp.Body().Contains("origin")
 	})
 })

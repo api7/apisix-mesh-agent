@@ -46,6 +46,13 @@ build-image:
 unit-test:
 	go test -cover -coverprofile=coverage.txt ./...
 
+### kind-reset            Delete the kind k8s cluster
+kind-reset:
+	kind delete cluster --name apisix
+
+kind-up:
+	./scripts/kind-with-registry.sh
+
 ### prepare-e2e-env:      Prepare the environment for running e2e test suites
 prepare-e2e-env: cleanup-e2e-legacies build-image
 	docker pull $(ISTIO_IMAGE)
