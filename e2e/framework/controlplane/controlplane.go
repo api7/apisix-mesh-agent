@@ -6,6 +6,9 @@ type ControlPlane interface {
 	Type() string
 	// Namespace fetches the deployed namespace of control plane components.
 	Namespace() string
+	// InjectNamespace marks the target namespace as injectable. Pod in this
+	// namespace will be injected by control plane.
+	InjectNamespace(string) error
 	// Deploy deploys the control plane.
 	Deploy() error
 	// Uninstall uninstalls the control plane.

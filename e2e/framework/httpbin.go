@@ -1,6 +1,8 @@
 package framework
 
 import (
+	"fmt"
+
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/onsi/ginkgo"
 	corev1 "k8s.io/api/core/v1"
@@ -20,7 +22,8 @@ spec:
       app: httpbin
   template:
     metadata:
-      app: httpbin
+      labels:
+        app: httpbin
     spec:
       containers:
       - name: httpbin
@@ -41,7 +44,7 @@ spec:
   ports:
   - name: http
     targetPort: 80
-	port: 80
+    port: 80
     protocol: TCP
 `
 )
@@ -88,4 +91,9 @@ func (f *Framework) waitUntilAllHttpBinPodsReady() error {
 		return true, nil
 	}
 	return waitExponentialBackoff(condFunc)
+}
+
+// GetHttpBinServiceFQDN returns the FQDN description for HttpBin service.
+func (f *Framework) GetHttpBinServiceFQDN() string {
+	return fmt.Sprintf("httpbin.%s.svc.cluster.local", f.namespace)
 }

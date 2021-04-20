@@ -10,24 +10,28 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/api7/apisix-mesh-agent/e2e/framework/controlplane"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/util/wait"
+
+	"github.com/api7/apisix-mesh-agent/e2e/framework/controlplane"
 )
 
 // Framework is the framework of apisix-mesh-agent e2e tests.
 type Framework struct {
 	opts        *Options
 	namespace   string
+	cpNamespace string
 	cp          controlplane.ControlPlane
 	kubectlOpts *k8s.KubectlOptions
+	tunnels     []*k8s.Tunnel
 
 	// Public arguments to render manifests.
-	HttpBinReplicas int
-	NginxReplicas   int
-	LocalRegistry   string
+	HttpBinReplicas      int
+	NginxReplicas        int
+	LocalRegistry        string
+	NginxVolumeConfigMap string
 }
 
 // Options contains options to customize the e2d framework.
@@ -63,8 +67,10 @@ func NewDefaultFramework() (*Framework, error) {
 // NewFramework creates the framework with the given options.
 func NewFramework(opts *Options) (*Framework, error) {
 	ns := randomizeNamespace()
+	cpNamespace := randomizeCPNamespace()
 	fw := &Framework{
-		namespace: ns,
+		cpNamespace: cpNamespace,
+		namespace:   ns,
 		kubectlOpts: &k8s.KubectlOptions{
 			ConfigPath: opts.Kubeconfig,
 			Namespace:  ns,
@@ -81,10 +87,11 @@ func NewFramework(opts *Options) (*Framework, error) {
 	switch opts.ControlPlane {
 	case "istio":
 		istioOpts := &controlplane.IstioOptions{
-			IstioImage: opts.ControlPlaneImage,
-			Kubeconfig: opts.Kubeconfig,
-			Namespace:  fw.namespace,
-			ChartsPath: opts.ControlPlaneChartsPath,
+			KubectlOpts: fw.kubectlOpts,
+			IstioImage:  opts.ControlPlaneImage,
+			Kubeconfig:  opts.Kubeconfig,
+			Namespace:   fw.cpNamespace,
+			ChartsPath:  opts.ControlPlaneChartsPath,
 		}
 		cp, err := controlplane.NewIstioControlPlane(istioOpts)
 		if err != nil {
@@ -122,15 +129,14 @@ func GetKubeconfig() string {
 
 func (f *Framework) deploy() {
 	gomega.NewGomegaWithT(ginkgo.GinkgoT()).Expect(f.cp.Deploy()).ShouldNot(gomega.HaveOccurred())
+	gomega.NewGomegaWithT(ginkgo.GinkgoT()).Expect(f.cp.InjectNamespace(f.namespace)).ShouldNot(gomega.HaveOccurred())
 	gomega.NewGomegaWithT(ginkgo.GinkgoT()).Expect(f.newHttpBin()).ShouldNot(gomega.HaveOccurred())
-}
-
-func randomizeNamespace() string {
-	return fmt.Sprintf("apisix-mesh-agent-e2e-%d", time.Now().Nanosecond())
 }
 
 func (f *Framework) beforeEach() {
 	err := k8s.CreateNamespaceE(ginkgo.GinkgoT(), f.kubectlOpts, f.namespace)
+	gomega.NewGomegaWithT(ginkgo.GinkgoT()).Expect(err).ShouldNot(gomega.HaveOccurred())
+	err = k8s.CreateNamespaceE(ginkgo.GinkgoT(), f.kubectlOpts, f.cpNamespace)
 	gomega.NewGomegaWithT(ginkgo.GinkgoT()).Expect(err).ShouldNot(gomega.HaveOccurred())
 	f.deploy()
 }
@@ -138,6 +144,18 @@ func (f *Framework) beforeEach() {
 func (f *Framework) afterEach() {
 	err := k8s.DeleteNamespaceE(ginkgo.GinkgoT(), f.kubectlOpts, f.namespace)
 	gomega.NewGomegaWithT(ginkgo.GinkgoT()).Expect(err).ShouldNot(gomega.HaveOccurred())
+
+	// Should delete the control plane components explicitly since there are some cluster scoped
+	// resources, which will be intact if we just only delete the cp namespace.
+	err = f.cp.Uninstall()
+	gomega.NewGomegaWithT(ginkgo.GinkgoT()).Expect(err).ShouldNot(gomega.HaveOccurred())
+
+	err = k8s.DeleteNamespaceE(ginkgo.GinkgoT(), f.kubectlOpts, f.cpNamespace)
+	gomega.NewGomegaWithT(ginkgo.GinkgoT()).Expect(err).ShouldNot(gomega.HaveOccurred())
+
+	for _, tunnel := range f.tunnels {
+		tunnel.Close()
+	}
 }
 
 func (f *Framework) renderManifest(manifest string) (string, error) {
@@ -160,4 +178,12 @@ func waitExponentialBackoff(condFunc func() (bool, error)) error {
 		Steps:    8,
 	}
 	return wait.ExponentialBackoff(backoff, condFunc)
+}
+
+func randomizeNamespace() string {
+	return fmt.Sprintf("apisix-mesh-agent-e2e-%d", time.Now().Nanosecond())
+}
+
+func randomizeCPNamespace() string {
+	return fmt.Sprintf("apisix-mesh-agent-cp-e2e-%d", time.Now().Nanosecond())
 }
