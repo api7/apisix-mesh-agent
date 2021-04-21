@@ -16,6 +16,7 @@ DATE ?= $(shell date +%s)
 DOCKER_IMAGE_TAG ?= dev
 ISTIO_IMAGE ?= istio/pilot:1.9.1
 NGINX_IMAGE ?= nginx:1.19.3
+HTTPBIN_IMAGE ?= kennethreitz/httpbin
 E2E_IMAGE_REGISTRY ?= localhost:5000
 E2E_CONCURRENCY ?= 1
 
@@ -82,6 +83,10 @@ prepare-e2e-env: cleanup-e2e-legacies build-image
 	docker pull $(NGINX_IMAGE)
 	docker tag $(NGINX_IMAGE) $(E2E_IMAGE_REGISTRY)/$(NGINX_IMAGE)
 	docker push $(E2E_IMAGE_REGISTRY)/$(NGINX_IMAGE)
+
+	docker pull $(HTTPBIN_IMAGE)
+	docker tag $(HTTPBIN_IMAGE) $(E2E_IMAGE_REGISTRY)/$(HTTPBIN_IMAGE)
+	docker push $(E2E_IMAGE_REGISTRY)/$(HTTPBIN_IMAGE)
 
 	docker tag api7/apisix-mesh-agent:$(DOCKER_IMAGE_TAG) $(E2E_IMAGE_REGISTRY)/api7/apisix-mesh-agent:$(DOCKER_IMAGE_TAG)
 	docker push $(E2E_IMAGE_REGISTRY)/api7/apisix-mesh-agent:$(DOCKER_IMAGE_TAG)
