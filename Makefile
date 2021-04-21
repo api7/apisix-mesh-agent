@@ -1,5 +1,5 @@
 default: help
-.PHONY: defauly
+.PHONY: default
 
 ### help:                 Show Makefile rules
 .PHONY: help
