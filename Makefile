@@ -89,6 +89,6 @@ prepare-e2e-env: cleanup-e2e-legacies build-image
 ### cleanup-e2e-legacies: Cleanup the e2e suites running legacies
 .PHONY: cleanup-e2e-legacies
 cleanup-e2e-legacies:
-	kubectl get validatingwebhookconfigurations.admissionregistration.k8s.io | grep istio | awk '{print $$1}' | xargs kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io
-	kubectl get mutatingwebhookconfigurations.admissionregistration.k8s.io | grep istio | awk '{print $$1}' | xargs kubectl delete mutatingwebhookconfigurations.admissionregistration.k8s.io
-	kubectl get ns | grep apisix-mesh-agent | awk '{print $$1}' | xargs  kubectl delete ns
+	kubectl get validatingwebhookconfigurations.admissionregistration.k8s.io | grep istio | awk '{print $$1}' | xargs kubectl delete validatingwebhookconfigurations.admissionregistration.k8s.io || true
+	kubectl get mutatingwebhookconfigurations.admissionregistration.k8s.io | grep istio | awk '{print $$1}' | xargs kubectl delete mutatingwebhookconfigurations.admissionregistration.k8s.io || true
+	kubectl get ns | grep apisix-mesh-agent | awk '{print $$1}' | xargs  kubectl delete ns || true
