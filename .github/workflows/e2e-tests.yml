@@ -28,6 +28,7 @@ jobs:
       - name: Run e2e test cases
         working-directory: ./
         run: |
+          cd e2e && go mod download
           make e2e-test E2E_CONCURRENCY=1
       - name: upload coverage profile
         working-directory: ./e2e
