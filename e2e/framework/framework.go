@@ -29,6 +29,7 @@ type Framework struct {
 
 	// Public arguments to render manifests.
 	HttpBinReplicas      int
+	SpringboardTarget    string
 	NginxReplicas        int
 	LocalRegistry        string
 	NginxVolumeConfigMap string

@@ -2,6 +2,7 @@ package suites
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/onsi/gomega"
 
@@ -31,39 +32,17 @@ var _ = ginkgo.Describe("[basic proxy functions]", func() {
 		snippet := fmt.Sprintf(template, fqdn, fqdn)
 		g.Expect(f.CreateConfigMap("nginx-httpbin", "httpbin.conf", snippet)).ShouldNot(gomega.HaveOccurred())
 		g.Expect(f.DeployNginxWithConfigMapVolume("nginx-httpbin")).ShouldNot(gomega.HaveOccurred())
+		g.Expect(f.DeploySpringboardWithSpecificProxyTarget("nginx")).ShouldNot(gomega.HaveOccurred())
 
-		expect, err := f.NewHTTPClientToNginxService()
+		expect, err := f.NewHTTPClientToSpringboard()
 		g.Expect(err).ShouldNot(gomega.HaveOccurred())
 
-		resp := expect.GET("/status/200").WithHeader("Host", fqdn).Expect()
-		resp.Status(404)
-		// Request was terminated by APISIX itself.
-		resp.Header("Server").Contains("APISIX")
-		resp.Body().Contains("404 Route Not Found")
-
-		vs := `
-apiVersion: networking.istio.io/v1alpha3
-kind: VirtualService
-metadata:
-  name: httpbin
-spec:
-  hosts:
-  - %s
-  http:
-  - name: "httpbin-route"
-    route:
-    - destination:
-        host: %s
-`
-		err = f.CreateResourceFromString(fmt.Sprintf(vs, fqdn, fqdn))
-		g.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-		resp = expect.GET("/ip").WithHeader("Host", fqdn).Expect()
-		resp.Status(200)
-		// Inbound APISIX will add a via header which value is APISIX.
-		// As we use the tunnel to access nginx, traffic won't be intercepted to the inbound APISIX.
-		// So here only one Via header will be appended.
-		resp.Header("Via").Equal("APISIX")
+		resp := expect.GET("/ip").WithHeader("Host", fqdn).Expect()
+		// Hit the default route the cluster outbound|80||httpbin.<namespace>.svc.cluster.local
+		resp.Status(http.StatusOK)
+		// The first Via header was added by nginx's sidecar;
+		// The second Via header was added by httpbin's sidecar;
+		resp.Headers().Value("Via").Array().Equal([]string{"APISIX", "APISIX"})
 		resp.Body().Contains("origin")
 	})
 })

@@ -76,10 +76,10 @@ func (f *Framework) DeployNginxWithConfigMapVolume(cm string) error {
 	return nil
 }
 
-// NewHTTPClientToNginxService creates a http client which sends requests to
-// Nginx service.
-func (f *Framework) NewHTTPClientToNginxService() (*httpexpect.Expect, error) {
-	endpoint, err := f.buildTunnelToNginxService()
+// NewHTTPClientToSpringboard creates a http client which sends requests to
+// springboard.
+func (f *Framework) NewHTTPClientToSpringboard() (*httpexpect.Expect, error) {
+	endpoint, err := f.buildTunnelToSpringboardService()
 	if err != nil {
 		return nil, err
 	}
@@ -99,12 +99,8 @@ func (f *Framework) NewHTTPClientToNginxService() (*httpexpect.Expect, error) {
 	}), nil
 }
 
-// buildTunnelToNginxService creates a tunnel to access nginx service.
-// Local port is fixed to 12384.
-// tunnel will be closed after the test suites done, so callers don't have
-// to close it by themselves.
-func (f *Framework) buildTunnelToNginxService() (string, error) {
-	tunnel := k8s.NewTunnel(f.kubectlOpts, k8s.ResourceTypeService, "nginx", 12384, 80)
+func (f *Framework) buildTunnelToSpringboardService() (string, error) {
+	tunnel := k8s.NewTunnel(f.kubectlOpts, k8s.ResourceTypeService, "springboard", 12384, 80)
 	if err := tunnel.ForwardPortE(ginkgo.GinkgoT()); err != nil {
 		return "", err
 	}
