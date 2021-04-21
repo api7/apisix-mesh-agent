@@ -99,7 +99,7 @@ nginx   2/2     Running   0          53s
 Uninstall
 ---------
 
-```
+```shell
 helm uninstall istio-discovery --namespace istio-system
 helm uninstall istio-base --namespace istio-system
 kubectl delete namespace istio-system
