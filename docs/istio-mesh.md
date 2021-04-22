@@ -73,7 +73,7 @@ helm install istio-discovery \
 	--set global.proxy.hub=$DOCKER_IMAGE_REGISTRY \
 	--set global.proxy.image=api7/apisix-mesh-agent \
 	--set global.proxy.tag=dev \
-	./istio-control/istio-discovery
+	./charts/istio-control/istio-discovery
 ```
 
 Now we will change the injection template as we want to change the sidecar from [Envoy](https://www.envoyproxy.io/) to apisix-mesh-agent.
