@@ -4,18 +4,18 @@ Tiny Mesh Scanario
 This post builds a tiny service mesh and tests it.
 
 ```shell
-                                          +----------------------------+                                             
-                                          |                            |                                             
-                                          |                            |                                             
-            +----------------------------->                            |                                             
-            |                             |           istio            |<--------+                                   
-            |                             |                            |         |                                   
-            |                             |                            |         |                                   
-            |                             +----------------------------+         |                                   
-            |                                                                    |                                   
-            |                                                                    |                                   
-            |                                                                    |                                   
-            |                                                                    |                                   
+                                          +----------------------------+
+                                          |                            |
+                                          |                            |
+            +----------------------------->                            |
+            |                             |           istio            |<--------+
+            |                             |                            |         |
+            |                             |                            |         |
+            |                             +----------------------------+         |
+            |                                                                    |
+            |                                                                    |
+            |                                                                    |
+            |                                                                    |
 +-----------|------------------------------------+                  +------------|----------------------------------+
 |           |                                    |                  |            |                                  |
 |           |                                    |                  |            |                                  |
@@ -26,20 +26,20 @@ This post builds a tiny service mesh and tests it.
 |+-----------^---|--+  7    +------------------+ |       6          | +------------------+  5  +------------------+ |
 |            |   |                               |                  |                                               |
 +------------|---|-------------------------------+                  +-----------------------------------------------+
-             |   |                                                                                                   
-             |   |                                                                                                   
-             |   |                                                                                                   
-             |   |                                                                                                  
-             |   |                                                                                                   
-           1 |   |8                                                                                                  
-             |   |                                                                                                   
-             |   |                                                                                                   
-             |   |                                                                                                   
-             |   |                                                                                                   
-             |   |                                                                                                   
-             |   |                                                                                                   
-             |   |                                                                                                   
-             |   v                                                                                                                                                                                           
+             |   |
+             |   |
+             |   |
+             |   |
+             |   |
+           1 |   |8
+             |   |
+             |   |
+             |   |
+             |   |
+             |   |
+             |   |
+             |   |
+             |   v
 ```
 
 HTTP Requests will be sent to the nginx pod and redirected to httpbin, both nginx and httpbin pods have the apisix-mesh-agent sidecar, and requests will be intercepted by it.
@@ -129,7 +129,7 @@ The last command creates a pod which used as the http client. We'll send request
 Test
 ----
 
-```
+```shell
 kubectl exec box -- curl http://nginx.app.svc.cluster.local/get -H 'Host: httpbin' -s -v
 * About to connect() to nginx.app.svc.cluster.local port 80 (#0)
 *   Trying 10.96.190.178...
