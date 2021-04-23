@@ -7,12 +7,11 @@
 package apisix
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	_ "github.com/envoyproxy/protoc-gen-validate/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -32,7 +31,7 @@ type Var struct {
 	// vars in Route is an two-dimensional array which cannot be represented
 	// directly in protobuf, here we use https://github.com/favadi/protoc-go-inject-tag
 	// to hack the ultimate pb.go.
-	Vars []string `protobuf:"bytes,1,rep,name=vars,proto3" json:",inline"`
+	Vars []string `protobuf:"bytes,1,rep,name=vars,proto3" json:"vars,omitempty"`
 }
 
 func (x *Var) Reset() {

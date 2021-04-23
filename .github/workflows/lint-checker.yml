@@ -28,6 +28,7 @@ jobs:
   golint:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
       - name: Download golangci-lint
         uses: golangci/golangci-lint-action@v2.5.1
         with:
