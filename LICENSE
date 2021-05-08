@@ -216,3 +216,4 @@ The following components are provided under the Apache License. See project link
 The text of each license is the standard Apache 2.0 license.
 
    files from istio/istio: https://github.com/istio/istio  Apache 2.0
+   files from openservicemesh/osm: https://github.com/openservicemesh/osm Apache 2.0

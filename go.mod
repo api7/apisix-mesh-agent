@@ -22,5 +22,4 @@ require (
 	google.golang.org/protobuf v1.25.0
 	gotest.tools v2.2.0+incompatible
 	istio.io/istio v0.0.0-20210308180034-f6502508b04c
-	k8s.io/apimachinery v0.20.4
 )
