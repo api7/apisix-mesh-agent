@@ -32,7 +32,7 @@ jobs:
       - name: Download golangci-lint
         uses: golangci/golangci-lint-action@v2.5.1
         with:
-          version: v1.38.0
+          version: v1.39.0
       - name: Run Golang Linters
         working-directory: ./
         run: |

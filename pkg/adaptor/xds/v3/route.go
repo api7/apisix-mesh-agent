@@ -13,6 +13,10 @@ import (
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
 )
 
+const (
+	_defaultRoutePriority = 999
+)
+
 func (adaptor *adaptor) TranslateRouteConfiguration(r *routev3.RouteConfiguration, opts *TranslateOptions) ([]*apisix.Route, error) {
 	var routes []*apisix.Route
 	for _, vhost := range r.GetVirtualHosts() {
@@ -66,6 +70,12 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 		if name == "" {
 			name = "<anon>"
 		}
+		priority := _defaultRoutePriority
+		// This is for istio.
+		// use the default and lowest priority for the "allow_any" route.
+		if name == "allow_any" {
+			priority = 0
+		}
 
 		queryVars, skip := adaptor.getParametersMatchVars(route)
 		if skip {
@@ -93,6 +103,7 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 		}
 		r := &apisix.Route{
 			Name:       name,
+			Priority:   int32(priority),
 			Status:     1,
 			Id:         id.GenID(name),
 			Hosts:      hosts.Strings(),
@@ -233,9 +244,18 @@ func getStringMatchValue(matcher *matcherv3.StringMatcher) string {
 }
 
 func patchRoutesWithOriginalDestination(routes []*apisix.Route, origDst string) {
-	for _, r := range routes {
-		r.Vars = append(r.Vars, &apisix.Var{
-			Vars: []string{"connection_original_dst", "==", origDst},
-		})
+	if strings.HasPrefix(origDst, "0.0.0.0:") {
+		port := origDst[len("0.0.0.0:"):]
+		for _, r := range routes {
+			r.Vars = append(r.Vars, &apisix.Var{
+				Vars: []string{"connection_original_dst", "~~", port + "$"},
+			})
+		}
+	} else {
+		for _, r := range routes {
+			r.Vars = append(r.Vars, &apisix.Var{
+				Vars: []string{"connection_original_dst", "==", origDst},
+			})
+		}
 	}
 }

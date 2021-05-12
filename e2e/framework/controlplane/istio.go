@@ -2,15 +2,16 @@ package controlplane
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os/exec"
 	"time"
 
-	"github.com/onsi/ginkgo"
-
 	"github.com/gruntwork-io/terratest/modules/k8s"
+	"github.com/onsi/ginkgo"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/api7/apisix-mesh-agent/pkg/log"
@@ -51,6 +52,8 @@ type IstioOptions struct {
 	ChartsPath []string
 	// Kubeconfig is the kube config file path.
 	Kubeconfig string
+
+	KubectlOpts *k8s.KubectlOptions
 }
 
 // NewIstioControlPlane creates an istio control plane.
@@ -71,7 +74,13 @@ func NewIstioControlPlane(opts *IstioOptions) (ControlPlane, error) {
 		"--set", "pilot.image="+image, "--set", "global.istioNamespace="+opts.Namespace,
 		opts.ChartsPath[0])
 	cleanupBase := exec.Command(_helm, "uninstall", "istio-base", "--namespace", opts.Namespace, "--kubeconfig", kc)
-	discovery := exec.Command(_helm, "install", "istio-control", "--namespace", opts.Namespace, "--kubeconfig", kc, opts.ChartsPath[1])
+	discovery := exec.Command(_helm, "install", "istio-control", "--namespace", opts.Namespace, "--kubeconfig", kc,
+		"--set", "pilot.image="+image,
+		"--set", "global.istioNamespace="+opts.Namespace,
+		"--set", "global.proxy.privileged=true",
+		"--set", "global.defaultResources.requests.cpu=1000m",
+		opts.ChartsPath[1],
+	)
 	cleanupDiscovery := exec.Command(_helm, "uninstall", "istio-control", "--namespace", opts.Namespace, "--kubeconfig", kc)
 
 	baseStderr := bytes.NewBuffer(nil)
@@ -163,7 +172,15 @@ func (cp *istio) Deploy() error {
 }
 
 func (cp *istio) Uninstall() error {
-	err := cp.cleanupBase.Run()
+	err := cp.cleanupDiscovery.Run()
+	if err != nil {
+		log.Errorw("failed to uninstall istio-control",
+			zap.Error(err),
+			zap.String("stderr", cp.cleanupDiscoveryStderr.String()),
+		)
+		return err
+	}
+	err = cp.cleanupBase.Run()
 	if err != nil {
 		log.Errorw("failed to uninstall istio-base",
 			zap.Error(err),
@@ -171,12 +188,23 @@ func (cp *istio) Uninstall() error {
 		)
 		return err
 	}
-	err = cp.cleanupDiscovery.Run()
+	return nil
+}
+
+func (cp *istio) InjectNamespace(ns string) error {
+	client, err := k8s.GetKubernetesClientFromOptionsE(ginkgo.GinkgoT(), cp.options.KubectlOpts)
 	if err != nil {
-		log.Errorw("failed to uninstall istio-control",
-			zap.Error(err),
-			zap.String("stderr", cp.cleanupDiscoveryStderr.String()),
-		)
+		return err
+	}
+	obj, err := client.CoreV1().Namespaces().Get(context.TODO(), ns, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	if obj.Labels == nil {
+		obj.Labels = make(map[string]string)
+	}
+	obj.Labels["istio-injection"] = "enabled"
+	if _, err := client.CoreV1().Namespaces().Update(context.TODO(), obj, metav1.UpdateOptions{}); err != nil {
 		return err
 	}
 	return nil

@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"sort"
 	"testing"
 
 	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
@@ -306,9 +307,11 @@ func TestTranslateVirtualHost(t *testing.T) {
 	assert.Equal(t, routes[0].Name, "route1#test#test")
 	assert.Equal(t, routes[0].Status, apisix.Route_Enable)
 	assert.Equal(t, routes[0].Id, id.GenID(routes[0].Name))
+
+	sort.Strings(routes[0].Hosts)
 	assert.Equal(t, routes[0].Hosts, []string{
-		"apisix.apache.org",
 		"*.apache.org",
+		"apisix.apache.org",
 	})
 	assert.Equal(t, routes[0].Uris, []string{
 		"/foo/baz*",
