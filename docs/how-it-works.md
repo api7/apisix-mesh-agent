@@ -38,6 +38,6 @@ Currently, apisix-mesh-agent supports to fetch configurations from [xDS](https:/
 
 ## ETCD V3 APIs
 
-In order to let APISIX fetches configuration from apisix-mesh-agent, the apisix-mesh-agent implments the [ETCD V3 APIs](https://www.envoyproxy.io/docs/envoy/latest/api-docs/xds_protocol#four-variants), not all APIs were supported but at least the part that used by Apache APISIX was covered.
+In order to let APISIX fetches configuration from apisix-mesh-agent, the apisix-mesh-agent implments the [ETCD V3 APIs](https://etcd.io/docs/v3.3/rfc/), not all APIs were supported but at least the part that used by Apache APISIX was covered.
 
 From the perspective of Apache APISIX, apisix-mesh-agent is an ETCD cluster.
