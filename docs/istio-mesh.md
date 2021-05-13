@@ -18,7 +18,7 @@ make kind-reset
 
 ### Install Helm
 
-In this post, we use [Helm](https://helm.io) to install [Istio](https://istio.io). You should download the desired Istio release to your local environment.
+In this post, we use [Helm 3](https://helm.io) to install [Istio](https://istio.io). You should download the desired Istio release version to your local environment. In this document, we use [istio/1.9.1](https://github.com/istio/istio/releases/tag/1.9.1).
 
 ### Create Istio Root Namespace
 
@@ -40,9 +40,13 @@ docker tag api7/apisix-mesh-agent:$DOCKER_IMAGE_TAG $DOCKER_IMAGE_REGISTRY/api7/
 docker push $DOCKER_IMAGE_REGISTRY/api7/apisix-mesh-agent:$DOCKER_IMAGE_TAG
 ```
 
-The following commands build the image firstly and push the image to the target image registry (change the `DOCKER_IMAGE_REGISTRY` to your desired one). You should have [docker](https://www.docker.com/) installed in the running environment.
+The above commands build the image firstly and push the image to the target image registry (change the `DOCKER_IMAGE_REGISTRY` to your desired one). You should have [docker](https://www.docker.com/) installed in the running environment.
 
-> Your image registry should be accessible for the Kubernetes cluster.
+> Note:
+>
+> 1. You should change the value of DOCKER_IMAGE_REGISTRY to the actual image registry address that you're using.
+>
+> 2. Your image registry should be accessible from the Kubernetes cluster.
 
 Install Istio-base Chart
 -------------------------
@@ -55,6 +59,8 @@ helm install istio-base \
 ```
 
 istio-base chart contains several resources which are required for running `istiod`.
+
+> Before you execute the above commands, be sure you've cloned [istio](https://istio.io/) to your local.
 
 Install istio-control Chart
 ----------------------------
@@ -76,7 +82,7 @@ helm install istio-discovery \
 	./charts/istio-control/istio-discovery
 ```
 
-Now we will change the injection template as we want to change the sidecar from [Envoy](https://www.envoyproxy.io/) to apisix-mesh-agent.
+We changed the injection template to [injection-template.yaml](../manifests/istio/injection-template.yaml) as we want to change the sidecar from [Envoy](https://www.envoyproxy.io/) to apisix-mesh-agent.
 
 > Please make sure memory is enough as by default Istios requests `2G` memory, if that's expensive in your Kubernetes cluster, changing the resources configuration by specifying: `--set pilot.resources.requests.memory=<reasonable memory size>`.
 
@@ -88,13 +94,15 @@ kubectl create namespace test
 kubectl run nginx --image=nginx -n test --port 80
 ```
 
-Wait for a while and check out the pod, the sidecar container now is injected into the nginx pod.
+Wait for a while and check out the pod status, the sidecar container should be injected into the nginx pod.
 
 ```shell
 kubectl get pods -n test
 NAME    READY   STATUS    RESTARTS   AGE
 nginx   2/2     Running   0          53s
 ```
+
+For further learning, please read [tiny-service-mesh-scenario](./examples/tiny-service-mesh-scnario.md), so you can know how to verify this mesh by sending requests.
 
 Uninstall
 ---------
