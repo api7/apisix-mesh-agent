@@ -8,7 +8,7 @@ help:
 	@echo
 	@grep -E '^### [-A-Za-z0-9_]+:' Makefile | sed 's/###/   /'
 
-VERSION ?= 0.0.0
+VERSION ?= 0.0.1
 
 GITSHA ?= $(shell git rev-parse --short=7 HEAD)
 PWD ?= $(shell pwd)
