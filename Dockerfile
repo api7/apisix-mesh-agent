@@ -1,4 +1,4 @@
-FROM alpine:3.12 as proxy-build-stage
+FROM alpine:3.13 as proxy-build-stage
 LABEL maintainer="tokers@apache.org"
 
 # Step 1, we build OpenResty by ourselves, since we have to apply some patches to it.
@@ -190,7 +190,7 @@ COPY . /apisix-mesh-agent
 RUN apk add --no-cache --virtual .builddeps git make \
     && cd /apisix-mesh-agent && GOPROXY=https://goproxy.cn,direct make build
 
-FROM alpine:3.2
+FROM alpine:3.13
 
 RUN apk add --no-cache --virtual .builddeps \
     iptables \
