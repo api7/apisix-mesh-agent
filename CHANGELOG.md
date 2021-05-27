@@ -1,11 +1,11 @@
 # Table of Contents
 
-- [0.0.1](#001)
+- [0.6](#06)
 
 
-# 0.0.1
+# 0.6
 
-First public release.
+This is the first public release.
 
 ## Core
 
