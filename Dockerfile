@@ -187,7 +187,7 @@ FROM golang:alpine3.13 as agent-build-stage
 # Step 4, building apisix-mesh-agent
 LABEL apisix_mesh_agent_version="${APISIX_MESH_AGENT_VERSION}"
 COPY . /apisix-mesh-agent
-RUN apk add --no-cache --virtual .builddeps make \
+RUN apk add --no-cache --virtual .builddeps git make \
     && cd /apisix-mesh-agent && GOPROXY=https://goproxy.cn,direct make build
 
 FROM alpine:3.2
