@@ -1,13 +1,14 @@
-# Table of Contents
+# Changelog
+
+## Table of Contents
 
 - [0.6](#06)
 
-
-# 0.6
+## 0.6
 
 This is the first public release.
 
-## Core
+### Core
 
 * Support basic xDS protocol;
 * Support iptables rules set up / clean up;
