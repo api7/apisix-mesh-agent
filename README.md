@@ -18,6 +18,12 @@ APISIX provides rich traffic management features such as load balancing, dynamic
 
 It's an excellent API Gateway but is not sufficient for Service Mesh, with the help of apisix-mesh-agent, it handles the East-West traffic well.
 
+Quick Start
+-----------
+
+You can quickly use this project with Istio according to the [Getting Started Guide](./docs/istio-mesh.md).
+
+
 The Design of APISIX Mesh
 -------------------------
 
