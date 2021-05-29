@@ -23,7 +23,6 @@ Quick Start
 
 You can quickly use this project with Istio according to the [Getting Started Guide](./docs/istio-mesh.md).
 
-
 The Design of APISIX Mesh
 -------------------------
 
