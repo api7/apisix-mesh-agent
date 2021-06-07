@@ -36,7 +36,7 @@ See [How it Works](./docs/how-it-works.md) to learn how apisix-mesh-agent extend
 The Internal of apisix-mesh-agent
 ---------------------------------
 
-If you're interested in the internal of apisix-mesh-agent, we recommand you
+If you're interested in the internal of apisix-mesh-agent, we recommend you
 to read the [the-internal-of-apisix-mesh-agent](./docs/the-internal-of-apisix-mesh-agent.md), it explains each
 module's function and responsibility.
 

@@ -1,0 +1,9 @@
+*
+!Makefile
+!api
+!cmd
+!pkg
+!main.go
+!go.*
+
+!nginx

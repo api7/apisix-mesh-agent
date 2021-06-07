@@ -196,6 +196,10 @@ func (e *etcdV3) addWatchStream(ws *watchStream) {
 	ws.id = id
 	e.watchers[id] = ws
 	e.watcherMu.Unlock()
+
+	e.logger.Debugw("add new watcher",
+		zap.Int64("id", ws.id),
+	)
 }
 
 func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
@@ -209,9 +213,6 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 		ctx:      ctx,
 	}
 	e.addWatchStream(ws)
-	e.logger.Debugw("add new watcher",
-		zap.Int64("id", ws.id),
-	)
 
 	defer func() {
 		e.watcherMu.Lock()
@@ -220,6 +221,7 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 		cancel()
 		e.logger.Debugw("delete watcher",
 			zap.Int64("id", ws.id),
+			zap.Int("living_watchers", len(e.watchers)),
 		)
 	}()
 

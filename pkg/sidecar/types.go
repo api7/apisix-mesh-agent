@@ -14,6 +14,7 @@ import (
 	"github.com/api7/apisix-mesh-agent/pkg/etcdv3"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
 	"github.com/api7/apisix-mesh-agent/pkg/provisioner"
+	"github.com/api7/apisix-mesh-agent/pkg/provisioner/nacos"
 	xdsv3file "github.com/api7/apisix-mesh-agent/pkg/provisioner/xds/v3/file"
 	xdsv3grpc "github.com/api7/apisix-mesh-agent/pkg/provisioner/xds/v3/grpc"
 	"github.com/api7/apisix-mesh-agent/pkg/types"
@@ -172,6 +173,8 @@ func newProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
 		return xdsv3file.NewXDSProvisioner(cfg)
 	case config.XDSV3GRPCProvisioner:
 		return xdsv3grpc.NewXDSProvisioner(cfg)
+	case config.NacosProvisioner:
+		return nacos.NewProvisioner(cfg)
 	default:
 		return nil, config.ErrUnknownProvisioner
 	}

@@ -67,7 +67,7 @@ type grpcProvisioner struct {
 // NewXDSProvisioner creates a provisioner which fetches config over gRPC.
 func NewXDSProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
 	if !strings.HasPrefix(cfg.XDSConfigSource, "grpc://") {
-		return nil, errors.New("bad xds config source")
+		return nil, errors.New("bad xds config source, missing protocol prefix \"grpc://\"")
 	}
 	cs := strings.TrimPrefix(cfg.XDSConfigSource, "grpc://")
 	logger, err := log.NewLogger(

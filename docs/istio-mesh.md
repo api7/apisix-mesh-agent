@@ -102,7 +102,7 @@ NAME    READY   STATUS    RESTARTS   AGE
 nginx   2/2     Running   0          53s
 ```
 
-For further learning, please read [tiny-service-mesh-scenario](./examples/tiny-service-mesh-scnario.md), so you can know how to verify this mesh by sending requests.
+For further learning, please read [tiny-service-mesh-scenario](./examples/tiny-service-mesh-scenario.md), so you can know how to verify this mesh by sending requests.
 
 Uninstall
 ---------

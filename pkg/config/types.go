@@ -11,10 +11,12 @@ import (
 )
 
 const (
-	// XDSV3FileProvioner means to use the xds v3 file provisioner.
+	// XDSV3FileProvisioner means to use the xds v3 file provisioner.
 	XDSV3FileProvisioner = "xds-v3-file"
 	// XDSV3GRPCProvisioner means to use the xds v3 grpc provisioner.
 	XDSV3GRPCProvisioner = "xds-v3-grpc"
+	// NacosProvisioner means to use nacos provisioner.
+	NacosProvisioner = "nacos"
 
 	// StandaloneMode means run apisix-mesh-agent standalone.
 	StandaloneMode = "standalone"
@@ -33,6 +35,8 @@ var (
 	ErrBadGRPCListen = errors.New("bad grpc listen address")
 	// ErrEmptyXDSConfigSource means the XDS config source is empty.
 	ErrEmptyXDSConfigSource = errors.New("empty xds config source, --xds-config-source option is required")
+	// ErrEmptyNacosSource means nacos source is empty
+	ErrEmptyNacosSource = errors.New("empty nacos source, --nacos-source option is required")
 
 	// DefaultGRPCListen is the default gRPC server listen address.
 	DefaultGRPCListen = "127.0.0.1:2379"
@@ -59,11 +63,14 @@ type Config struct {
 	// The destination of logs.
 	LogOutput string `json:"log_output" yaml:"log_output"`
 	// The Provisioner to use.
-	// Value can be "xds-v3-file", "xds-v3-grpc".
+	// Value can be "xds-v3-file", "xds-v3-grpc", "nacos".
 	Provisioner string `json:"provisioner" yaml:"provisioner"`
 	// The watched xds files, only valid if the Provisioner is "xds-v3-file"
 	XDSWatchFiles   []string `json:"xds_watch_files" yaml:"xds_watch_files"`
+	// XDSConfigSource only valid if the Provisioner is "xds-v3-grpc"
 	XDSConfigSource string   `json:"xds_config_source" yaml:"xds_config_source"`
+	// NacosSource should have format: SCHEME://URL:PORT/CONTEXT_PATH, for example: http://localhost:8848/nacos
+	NacosSource string `json:"nacos_source" yaml:"nacos_source"`
 	// The grpc listen address
 	GRPCListen string `json:"grpc_listen" yaml:"grpc_listen"`
 	// The key prefix in the mimicking etcd v3 server.
@@ -107,11 +114,14 @@ func (cfg *Config) Validate() error {
 	if cfg.Provisioner == "" {
 		return errors.New("unspecified provisioner")
 	}
-	if cfg.Provisioner != XDSV3FileProvisioner && cfg.Provisioner != XDSV3GRPCProvisioner {
+	if cfg.Provisioner != XDSV3FileProvisioner && cfg.Provisioner != XDSV3GRPCProvisioner && cfg.Provisioner != NacosProvisioner {
 		return ErrUnknownProvisioner
 	}
 	if cfg.Provisioner == XDSV3GRPCProvisioner && cfg.XDSConfigSource == "" {
 		return ErrEmptyXDSConfigSource
+	}
+	if cfg.Provisioner == NacosProvisioner && cfg.NacosSource == ""{
+		return ErrEmptyNacosSource
 	}
 	ip, port, err := net.SplitHostPort(cfg.GRPCListen)
 	if err != nil {

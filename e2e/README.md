@@ -28,7 +28,7 @@ You can pass the variable `E2E_CONCURRENCY` to control the concurrency.
 How can I focus on one test case
 ---------------------------------
 
-Edit the target test case, changing the `gingko.It` to `ginkgo.FIt` or
+Edit the target test case, changing the `ginkgo.It` to `ginkgo.FIt` or
 `ginkgo.Describe` to `ginkgo.FDescribe`, then executing `make e2e-test`.
 
 What if the legacies are remaining due to aborted debugging
