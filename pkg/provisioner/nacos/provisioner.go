@@ -144,11 +144,9 @@ func (p *nacosProvisioner) Run(stop chan struct{}) error {
 	}
 
 	for {
-		select {
-		case <-stop:
-			p.logger.Infof("receive stop signal")
-			return nil
-		}
+		<-stop
+		p.logger.Infof("receive stop signal")
+		return nil
 	}
 }
 

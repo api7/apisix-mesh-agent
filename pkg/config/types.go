@@ -66,9 +66,9 @@ type Config struct {
 	// Value can be "xds-v3-file", "xds-v3-grpc", "nacos".
 	Provisioner string `json:"provisioner" yaml:"provisioner"`
 	// The watched xds files, only valid if the Provisioner is "xds-v3-file"
-	XDSWatchFiles   []string `json:"xds_watch_files" yaml:"xds_watch_files"`
+	XDSWatchFiles []string `json:"xds_watch_files" yaml:"xds_watch_files"`
 	// XDSConfigSource only valid if the Provisioner is "xds-v3-grpc"
-	XDSConfigSource string   `json:"xds_config_source" yaml:"xds_config_source"`
+	XDSConfigSource string `json:"xds_config_source" yaml:"xds_config_source"`
 	// NacosSource should have format: SCHEME://URL:PORT/CONTEXT_PATH, for example: http://localhost:8848/nacos
 	NacosSource string `json:"nacos_source" yaml:"nacos_source"`
 	// The grpc listen address
@@ -120,7 +120,7 @@ func (cfg *Config) Validate() error {
 	if cfg.Provisioner == XDSV3GRPCProvisioner && cfg.XDSConfigSource == "" {
 		return ErrEmptyXDSConfigSource
 	}
-	if cfg.Provisioner == NacosProvisioner && cfg.NacosSource == ""{
+	if cfg.Provisioner == NacosProvisioner && cfg.NacosSource == "" {
 		return ErrEmptyNacosSource
 	}
 	ip, port, err := net.SplitHostPort(cfg.GRPCListen)
