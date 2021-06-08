@@ -11,6 +11,7 @@ require (
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.10.5
 	go.uber.org/zap v1.16.0
+	golang.org/x/sys v0.0.0-20210608053332-aa57babbf139 // indirect
 	k8s.io/api v0.20.4
 	k8s.io/apimachinery v0.20.4
 )
