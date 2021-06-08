@@ -15,7 +15,7 @@ require (
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5
 	go.etcd.io/etcd/api/v3 v3.5.0-alpha.0
 	go.uber.org/zap v1.16.0
-	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
+	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
 	google.golang.org/genproto v0.0.0-20210222152913-aa3ee6e6a81c
 	google.golang.org/grpc v1.36.0
 	google.golang.org/grpc/examples v0.0.0-20210304020650-930c79186c99 // indirect
