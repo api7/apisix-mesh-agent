@@ -45,7 +45,7 @@ func TestNewXDSProvisioner(t *testing.T) {
 	}
 	p, err := NewXDSProvisioner(cfg)
 	assert.Nil(t, p)
-	assert.Equal(t, _errBadXDSGRPCSchema, err.Error())
+	assert.Equal(t, _errBadXDSGRPCSchema.Error(), err.Error())
 
 	cfg.XDSConfigSource = "grpc://127.0.0.1:11111"
 	p, err = NewXDSProvisioner(cfg)
