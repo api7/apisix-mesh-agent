@@ -8,6 +8,7 @@ require (
 	github.com/api7/apisix-mesh-agent v0.0.0-00010101000000-000000000000
 	github.com/gavv/httpexpect/v2 v2.2.0
 	github.com/gruntwork-io/terratest v0.32.15
+	github.com/nacos-group/nacos-sdk-go v1.0.8
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.10.5
 	go.uber.org/zap v1.16.0

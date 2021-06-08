@@ -14,12 +14,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/api7/apisix-mesh-agent/e2e/framework/constant"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
-)
-
-var (
-	_helm              = "helm"
-	_defaultKubeconfig = "~/.kube/config"
 )
 
 type istio struct {
@@ -46,6 +42,8 @@ type IstioOptions struct {
 	IstioImage string
 	// Namespace is the target namespace to install Istiod.
 	Namespace string
+	// DiscoveryExtraArgs contains extra args for istio-discovery
+	DiscoveryExtraArgs []string
 	// ChartsPath is a directory that contains charts for Istio.
 	// The first element should be the chart for istio-base and
 	// the second is the istio-control.
@@ -59,7 +57,7 @@ type IstioOptions struct {
 // NewIstioControlPlane creates an istio control plane.
 func NewIstioControlPlane(opts *IstioOptions) (ControlPlane, error) {
 	if opts.Kubeconfig == "" {
-		opts.Kubeconfig = _defaultKubeconfig
+		opts.Kubeconfig = constant.DefaultKubeconfig
 	}
 	kc := opts.Kubeconfig
 	image := "istio/pilot:1.9.1"
@@ -69,19 +67,22 @@ func NewIstioControlPlane(opts *IstioOptions) (ControlPlane, error) {
 	if opts.Namespace == "" {
 		return nil, errors.New("unspecific namespace")
 	}
-	base := exec.Command(_helm,
+	base := exec.Command(constant.Helm,
 		"install", "istio-base", "--namespace", opts.Namespace, "--kubeconfig", kc,
 		"--set", "pilot.image="+image, "--set", "global.istioNamespace="+opts.Namespace,
 		opts.ChartsPath[0])
-	cleanupBase := exec.Command(_helm, "uninstall", "istio-base", "--namespace", opts.Namespace, "--kubeconfig", kc)
-	discovery := exec.Command(_helm, "install", "istio-control", "--namespace", opts.Namespace, "--kubeconfig", kc,
+	cleanupBase := exec.Command(constant.Helm, "uninstall", "istio-base", "--namespace", opts.Namespace, "--kubeconfig", kc)
+	discovery := exec.Command(constant.Helm, "install", "istio-control", "--namespace", opts.Namespace, "--kubeconfig", kc,
 		"--set", "pilot.image="+image,
 		"--set", "global.istioNamespace="+opts.Namespace,
 		"--set", "global.proxy.privileged=true",
+		"--set", "global.configValidation=false",
 		"--set", "global.defaultResources.requests.cpu=1000m",
 		opts.ChartsPath[1],
 	)
-	cleanupDiscovery := exec.Command(_helm, "uninstall", "istio-control", "--namespace", opts.Namespace, "--kubeconfig", kc)
+	discovery.Args = append(discovery.Args, opts.DiscoveryExtraArgs...)
+
+	cleanupDiscovery := exec.Command(constant.Helm, "uninstall", "istio-control", "--namespace", opts.Namespace, "--kubeconfig", kc)
 
 	baseStderr := bytes.NewBuffer(nil)
 	cleanupBaseStderr := bytes.NewBuffer(nil)

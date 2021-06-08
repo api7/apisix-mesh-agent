@@ -26,7 +26,7 @@ var (
 	_ provisioner.Provisioner = (*nacosProvisioner)(nil)
 
 	// ErrUnknownNacosScheme means provided nacos address is not HTTP or HTTPS
-	ErrUnknownNacosScheme = errors.New("cannot detect Nacos service port")
+	ErrUnknownNacosScheme = errors.New("invalid nacos scheme")
 )
 
 // TODO: Add e2e test

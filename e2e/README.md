@@ -1,13 +1,14 @@
 E2E Test Suites
 ===============
 
-All E2E test suites are run in your local environment, but all related components are run in a Kuberentes cluster, we recommend you to use [Kind](https://kind.sigs.k8s.io/) and we provide some simple comands
+All E2E test suites are run in your local environment, but all related components are run in a Kubernetes cluster, we recommend you to use [Kind](https://kind.sigs.k8s.io/) and we provide some simple commands
 to create the Kubernetes cluster by kind quickly.
 
 Workflow
 ---------
 
-The e2e framework sets up hooks when running each [ginkgo.Describe](https://pkg.go.dev/github.com/onsi/ginkgo#Describe) block, the `BeforeEach` hook will do the following things before the test case can be run:
+The e2e framework sets up hooks when running each [ginkgo.Describe](https://pkg.go.dev/github.com/onsi/ginkgo#Describe) block,
+the `BeforeEach` hook will do the following things before the test case can be run:
 
 1. Create two namespaces, one for service mesh control plane (like [Istio](https://istio.io)), the other for apps.
 2. Deploy the control plane, now Istio is in use, it uses [modified charts](./charts) to replace [Envoy](https://www.envoyproxy.io/) by apisix-mesh-agent.
