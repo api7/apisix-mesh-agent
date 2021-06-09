@@ -3,6 +3,7 @@ package nacos
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/onsi/ginkgo"
@@ -14,20 +15,31 @@ import (
 var _ = ginkgo.Describe("[nacos provisioner basic proxy functions]", func() {
 	g := gomega.NewWithT(ginkgo.GinkgoT())
 
-	f, err := framework.NewNacosFramework()
-	g.Expect(err).ShouldNot(gomega.HaveOccurred())
+	var (
+		f     *framework.Framework
+		nacos *framework.NacosInstallation
+		err   error
+	)
 
-	nacos, err := framework.NewNacos()
-	g.Expect(err).ShouldNot(gomega.HaveOccurred())
+	if os.Getenv("GITHUB_ACTIONS") == "" {
+		f, err = framework.NewNacosFramework()
+		g.Expect(err).ShouldNot(gomega.HaveOccurred())
 
+		nacos, err = framework.NewNacos()
+		g.Expect(err).ShouldNot(gomega.HaveOccurred())
+	}
 	// Clear configs
 	ginkgo.BeforeEach(func() {
+		if os.Getenv("GITHUB_ACTIONS") != "" {
+			ginkgo.Skip("Skipped in GitHub Actions")
+		}
+
 		err = nacos.DeleteConfig(&framework.NacosConfig{
-			DataId:  "cfg.routes",
+			DataId: "cfg.routes",
 		})
 		g.Expect(err).ShouldNot(gomega.HaveOccurred())
 		err = nacos.DeleteConfig(&framework.NacosConfig{
-			DataId:  "cfg.upstreams",
+			DataId: "cfg.upstreams",
 		})
 		g.Expect(err).ShouldNot(gomega.HaveOccurred())
 	})

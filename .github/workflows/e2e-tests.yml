@@ -26,6 +26,8 @@ jobs:
           go get -u github.com/onsi/ginkgo/ginkgo
           sudo cp ~/go/bin/ginkgo /usr/local/bin
       - name: Run e2e test cases
+        env:
+          GITHUB_ACTIONS: true
         working-directory: ./
         run: |
           cd e2e && go mod download && cd ..
