@@ -49,7 +49,7 @@ var _ = ginkgo.Describe("[nacos provisioner basic proxy functions]", func() {
 	})
 
 	ginkgo.AfterSuite(func() {
-		if !nacos.Preinstalled {
+		if nacos != nil && !nacos.Preinstalled {
 			err = nacos.Uninstall()
 			g.Expect(err).ShouldNot(gomega.HaveOccurred())
 		}
