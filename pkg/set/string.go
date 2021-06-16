@@ -1,5 +1,7 @@
 package set
 
+import "sort"
+
 // StringSet represents a set which elements are string.
 type StringSet map[string]struct{}
 
@@ -32,5 +34,12 @@ func (set StringSet) Strings() []string {
 	for e := range set {
 		s = append(s, e)
 	}
+	return s
+}
+
+// OrderedStrings converts the string set to a sorted string slice.
+func (set StringSet) OrderedStrings() []string {
+	s := set.Strings()
+	sort.Strings(s)
 	return s
 }
