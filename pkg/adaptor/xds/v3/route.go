@@ -106,7 +106,7 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 			Priority:   int32(priority),
 			Status:     1,
 			Id:         id.GenID(name),
-			Hosts:      hosts.Strings(),
+			Hosts:      hosts.OrderedStrings(), // avoid unstable array for diff
 			Uris:       []string{uri},
 			UpstreamId: id.GenID(cluster),
 			Vars:       vars,
