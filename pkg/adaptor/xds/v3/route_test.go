@@ -1,7 +1,6 @@
 package v3
 
 import (
-	apisixutil "github.com/api7/apisix-mesh-agent/pkg/apisix"
 	"sort"
 	"testing"
 
@@ -9,6 +8,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 
+	apisixutil "github.com/api7/apisix-mesh-agent/pkg/apisix"
 	"github.com/api7/apisix-mesh-agent/pkg/id"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
