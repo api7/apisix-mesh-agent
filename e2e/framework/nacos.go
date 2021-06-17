@@ -17,6 +17,7 @@ import (
 	"github.com/nacos-group/nacos-sdk-go/vo"
 	"github.com/onsi/ginkgo"
 	"go.uber.org/zap"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	e2econst "github.com/api7/apisix-mesh-agent/e2e/framework/constant"
@@ -99,7 +100,13 @@ func NewNacos() (*NacosInstallation, error) {
 	condFunc := func() (bool, error) {
 		pod, err := k8s.GetPodE(ginkgo.GinkgoT(), nacos.KubectlOpts, nacos.ReleaseName+"-0")
 		if err != nil {
-			return false, err
+			if k8serrors.IsNotFound(err) {
+				return false, err
+			} else {
+				log.Errorw("failed to get nacos pod",
+					zap.Error(err),
+				)
+			}
 		}
 		return k8s.IsPodAvailable(pod), nil
 	}

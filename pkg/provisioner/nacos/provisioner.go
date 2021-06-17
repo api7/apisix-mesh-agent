@@ -146,7 +146,7 @@ func (p *nacosProvisioner) Run(stop chan struct{}) error {
 	for {
 		<-stop
 		p.logger.Infof("receive stop signal")
-		return nil
+		return p.unwatch()
 	}
 }
 
@@ -199,6 +199,24 @@ func (p *nacosProvisioner) watch() error {
 		DataId:   "cfg.upstreams",
 		Group:    "org.apache.apisix",
 		OnChange: p.upstreamOnChange,
+	})
+	return err
+}
+
+func (p *nacosProvisioner) unwatch() error {
+	// TODO: Support multiple DataId
+	err := p.configClient.CancelListenConfig(vo.ConfigParam{
+		DataId:   "cfg.routes",
+		Group:    "org.apache.apisix",
+	})
+	if err != nil {
+		return err
+	}
+
+	// TODO: Support multiple DataId
+	err = p.configClient.CancelListenConfig(vo.ConfigParam{
+		DataId:   "cfg.upstreams",
+		Group:    "org.apache.apisix",
 	})
 	return err
 }
