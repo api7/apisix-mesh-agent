@@ -206,8 +206,8 @@ func (p *nacosProvisioner) watch() error {
 func (p *nacosProvisioner) unwatch() error {
 	// TODO: Support multiple DataId
 	err := p.configClient.CancelListenConfig(vo.ConfigParam{
-		DataId:   "cfg.routes",
-		Group:    "org.apache.apisix",
+		DataId: "cfg.routes",
+		Group:  "org.apache.apisix",
 	})
 	if err != nil {
 		return err
@@ -215,8 +215,8 @@ func (p *nacosProvisioner) unwatch() error {
 
 	// TODO: Support multiple DataId
 	err = p.configClient.CancelListenConfig(vo.ConfigParam{
-		DataId:   "cfg.upstreams",
-		Group:    "org.apache.apisix",
+		DataId: "cfg.upstreams",
+		Group:  "org.apache.apisix",
 	})
 	return err
 }
