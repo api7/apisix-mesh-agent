@@ -2,7 +2,6 @@ package etcdv3
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -11,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	json "google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/api7/apisix-mesh-agent/pkg/cache"
 )

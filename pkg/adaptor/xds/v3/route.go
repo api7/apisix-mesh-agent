@@ -50,8 +50,7 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 		adaptor.logger.Debugw("translating envoy route",
 			zap.Any("route", route),
 		)
-		match := route.GetMatch()
-		sensitive := match.CaseSensitive
+		sensitive := route.GetMatch().CaseSensitive
 		if sensitive != nil && !sensitive.GetValue() {
 			// Apache APISIX doens't support case insensitive URI match,
 			// so these routes should be neglected.
@@ -121,6 +120,13 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 			return nil, err
 		}
 		if plugin != nil {
+			if len(vars) > 0 && plugin.TrafficSplit != nil {
+				plugin.TrafficSplit.Rules[0].Match = []*apisix.TrafficSplitMatch{
+					{
+						Vars: vars,
+					},
+				}
+			}
 			r.Plugins = plugin
 		}
 		routes = append(routes, r)
