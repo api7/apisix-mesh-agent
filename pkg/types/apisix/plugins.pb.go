@@ -22,11 +22,13 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Plugins contains enabled plugins in Route
 type Plugins struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Note: we need to use protojson to make json_name works
 	TrafficSplit *TrafficSplit `protobuf:"bytes,1,opt,name=traffic_split,json=traffic-split,proto3" json:"traffic_split,omitempty"`
 }
 
@@ -69,6 +71,8 @@ func (x *Plugins) GetTrafficSplit() *TrafficSplit {
 	return nil
 }
 
+// TrafficSplit is traffic-split plugin.
+// See https://github.com/apache/apisix/blob/master/docs/en/latest/plugins/traffic-split.md
 type TrafficSplit struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
