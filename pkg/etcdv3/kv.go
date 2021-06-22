@@ -139,7 +139,7 @@ func (e *etcdV3) findExactKey(key []byte) (*etcdserverpb.RangeResponse, error) {
 			}
 			return nil, _errInternalError
 		}
-		value, err = json.Marshal(route)
+		value, err = json.MarshalOptions{UseEnumNumbers: true}.Marshal(route)
 		if err != nil {
 			e.logger.Errorw("failed to marshal route",
 				zap.Any("route", route),
@@ -158,7 +158,7 @@ func (e *etcdV3) findExactKey(key []byte) (*etcdserverpb.RangeResponse, error) {
 			}
 			return nil, _errInternalError
 		}
-		value, err = json.Marshal(ups)
+		value, err = json.MarshalOptions{UseEnumNumbers: true}.Marshal(ups)
 		if err != nil {
 			e.logger.Errorw("failed to marshal upstream",
 				zap.Any("upstream", ups),
@@ -203,7 +203,7 @@ func (e *etcdV3) findAllKeys(key []byte) (*etcdserverpb.RangeResponse, error) {
 		}
 		for _, r := range routes {
 			itemKey := e.keyPrefix + "/routes/" + r.Id
-			value, err := json.Marshal(r)
+			value, err := json.MarshalOptions{UseEnumNumbers: true}.Marshal(r)
 			if err != nil {
 				e.logger.Errorw("failed to marshal route",
 					zap.Error(err),
@@ -223,7 +223,7 @@ func (e *etcdV3) findAllKeys(key []byte) (*etcdserverpb.RangeResponse, error) {
 		}
 		for _, u := range upstreams {
 			itemKey := e.keyPrefix + "/upstreams/" + u.Id
-			value, err := json.Marshal(u)
+			value, err := json.MarshalOptions{UseEnumNumbers: true}.Marshal(u)
 			if err != nil {
 				e.logger.Errorw("failed to marshal upstream",
 					zap.Error(err),

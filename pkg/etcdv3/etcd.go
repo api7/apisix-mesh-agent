@@ -216,7 +216,7 @@ func (e *etcdV3) pushEvent(ev *types.Event) {
 	if !ok {
 		m.createRevision = rev
 	}
-	value, err := json.Marshal(obj.(proto.Message))
+	value, err := json.MarshalOptions{UseEnumNumbers: true}.Marshal(obj.(proto.Message))
 	if err != nil {
 		e.logger.Errorw("protojson marshal error",
 			zap.Error(err),

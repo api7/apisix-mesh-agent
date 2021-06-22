@@ -45,6 +45,9 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 	}
 	var routes []*apisix.Route
 
+	adaptor.logger.Debugw("translating virtual host",
+		zap.Any("vhost", vhost),
+	)
 	// FIXME Respect the CaseSensitive field.
 	for _, route := range vhost.GetRoutes() {
 		adaptor.logger.Debugw("translating envoy route",
@@ -52,7 +55,7 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 		)
 		sensitive := route.GetMatch().CaseSensitive
 		if sensitive != nil && !sensitive.GetValue() {
-			// Apache APISIX doens't support case insensitive URI match,
+			// Apache APISIX doesn't support case insensitive URI match,
 			// so these routes should be neglected.
 			adaptor.logger.Warnw("ignore route with case insensitive match",
 				zap.Any("route", route),
@@ -112,7 +115,9 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 			Hosts:      hosts.Strings(),
 			Uris:       []string{uri},
 			UpstreamId: id.GenID(cluster),
-			Vars:       vars,
+		}
+		if len(vars) > 0 {
+			r.Vars = vars
 		}
 
 		plugin, err := adaptor.translateRouteAction(route)
@@ -121,14 +126,11 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 		}
 		if plugin != nil {
 			if len(vars) > 0 && plugin.TrafficSplit != nil {
-				plugin.TrafficSplit.Rules[0].Match = []*apisix.TrafficSplitMatch{
-					{
-						Vars: vars,
-					},
-				}
+				plugin.TrafficSplit.Rules[0].Match = vars
 			}
 			r.Plugins = plugin
 		}
+
 		routes = append(routes, r)
 	}
 	adaptor.logger.Debugw("translated apisix routes",
@@ -195,6 +197,8 @@ func (adaptor *adaptor) getParametersMatchVars(route *routev3.Route) ([]*apisix.
 				op = "~*"
 			}
 			expr.Vars = []string{name, op, value}
+		default:
+			continue
 		}
 		vars = append(vars, &expr)
 	}
