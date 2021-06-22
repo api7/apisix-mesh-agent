@@ -2,7 +2,6 @@ package etcdv3
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +13,7 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.uber.org/zap"
+	json "google.golang.org/protobuf/encoding/protojson"
 )
 
 var (
@@ -130,7 +130,7 @@ func (ws *watchStream) findAllRoutes(minRev int64) ([]*mvccpb.KeyValue, error) {
 			continue
 		}
 		if m.modRevision >= minRev {
-			value, err := json.Marshal(r)
+			value, err := json.MarshalOptions{UseEnumNumbers: true}.Marshal(r)
 			if err != nil {
 				ws.etcd.logger.Errorw("protojson marshal failure",
 					zap.Error(err),
@@ -170,7 +170,7 @@ func (ws *watchStream) findAllUpstreams(minRev int64) ([]*mvccpb.KeyValue, error
 			continue
 		}
 		if m.modRevision >= minRev {
-			value, err := json.Marshal(u)
+			value, err := json.MarshalOptions{UseEnumNumbers: true}.Marshal(u)
 			if err != nil {
 				ws.etcd.logger.Errorw("protojson marshal failure",
 					zap.Error(err),

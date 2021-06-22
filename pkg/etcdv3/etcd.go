@@ -2,7 +2,6 @@ package etcdv3
 
 import (
 	"context"
-	"encoding/json"
 	"net"
 	"net/http"
 	"strings"
@@ -18,6 +17,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
+	json "google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/api7/apisix-mesh-agent/pkg/cache"
 	"github.com/api7/apisix-mesh-agent/pkg/config"
@@ -215,7 +216,7 @@ func (e *etcdV3) pushEvent(ev *types.Event) {
 	if !ok {
 		m.createRevision = rev
 	}
-	value, err := json.Marshal(obj)
+	value, err := json.MarshalOptions{UseEnumNumbers: true}.Marshal(obj.(proto.Message))
 	if err != nil {
 		e.logger.Errorw("protojson marshal error",
 			zap.Error(err),

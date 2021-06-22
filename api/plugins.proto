@@ -9,7 +9,7 @@ import "google/protobuf/any.proto";
 // Plugins contains enabled plugins in Route
 message Plugins {
   // Note: we need to use protojson to make json_name works
-  TrafficSplit traffic_split = 1 [json_name="traffic-split"];;
+  TrafficSplit traffic_split = 1 [json_name="traffic-split"];
 }
 
 // TrafficSplit is traffic-split plugin.
@@ -19,15 +19,11 @@ message TrafficSplit {
 }
 
 message TrafficSplitRule {
-  repeated TrafficSplitMatch match = 1;
-  repeated TrafficSplitWeightedUpstreams weighted_upstreams = 2;
-}
-
-message TrafficSplitMatch {
-  repeated Var vars = 1;
+  repeated Var match = 1;
+  repeated TrafficSplitWeightedUpstreams weighted_upstreams = 2 [json_name="weighted_upstreams"];
 }
 
 message TrafficSplitWeightedUpstreams {
-  string upstream_id = 1;
+  string upstream_id = 1 [json_name="upstream_id"];
   uint32 weight = 2;
 }
