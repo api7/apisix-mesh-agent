@@ -87,6 +87,7 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 		}
 		vars = append(vars, queryVars...)
 		name = fmt.Sprintf("%s#%s#%s", name, vhost.GetName(), prefix)
+		name = strings.Replace(name, ".svc.cluster.local", "", -1) // avoid name too long
 		hosts := set.StringSet{}
 		for _, domain := range vhost.Domains {
 			if domain == "*" {
