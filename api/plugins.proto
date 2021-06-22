@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+option go_package = "github.com/apache/apisix";
+
+import "base.proto";
+import "validate/validate.proto";
+import "google/protobuf/any.proto";
+
+message Plugins {
+  TrafficSplit traffic_split = 1 [json_name="traffic-split"];;
+}
+
+message TrafficSplit {
+  repeated TrafficSplitRule rules = 1;
+}
+
+message TrafficSplitRule {
+  repeated TrafficSplitMatch match = 1;
+  repeated TrafficSplitWeightedUpstreams weighted_upstreams = 2;
+}
+
+message TrafficSplitMatch {
+  repeated Var vars = 1;
+}
+
+message TrafficSplitWeightedUpstreams {
+  string upstream_id = 1;
+  uint32 weight = 2;
+}
