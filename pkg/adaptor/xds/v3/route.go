@@ -161,12 +161,11 @@ func (adaptor *adaptor) getClusterName(route *routev3.Route) (string, bool) {
 
 func (adaptor *adaptor) getURL(route *routev3.Route) (string, bool) {
 	var uri string
-	pathSpecifier := route.GetMatch().GetPathSpecifier()
-	switch pathSpecifier.(type) {
+	switch pathSpecifier := route.GetMatch().GetPathSpecifier().(type) {
 	case *routev3.RouteMatch_Path:
-		uri = pathSpecifier.(*routev3.RouteMatch_Path).Path
+		uri = pathSpecifier.Path
 	case *routev3.RouteMatch_Prefix:
-		uri = pathSpecifier.(*routev3.RouteMatch_Prefix).Prefix + "*"
+		uri = pathSpecifier.Prefix + "*"
 	default:
 		adaptor.logger.Warnw("ignore route with unexpected path specifier",
 			zap.Any("route", route),
