@@ -43,11 +43,25 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 	if prefix == "" {
 		prefix = "<anon>"
 	}
-	var routes []*apisix.Route
 
-	adaptor.logger.Debugw("translating virtual host",
-		zap.Any("vhost", vhost),
-	)
+	hostSet := set.StringSet{}
+	for _, domain := range vhost.Domains {
+		if domain == "*" {
+			// If this route allows any domain to use, just don't set hosts
+			// in APISIX routes.
+			hostSet = set.StringSet{}
+			break
+		} else {
+			if pos := strings.Index(domain, ":"); pos != -1 {
+				domain = domain[:pos]
+			}
+			hostSet.Add(domain)
+		}
+	}
+	// avoid unstable array for diff
+	hosts := hostSet.OrderedStrings()
+
+	var routes []*apisix.Route
 	// FIXME Respect the CaseSensitive field.
 	for _, route := range vhost.GetRoutes() {
 		adaptor.logger.Debugw("translating envoy route",
@@ -93,26 +107,12 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 		}
 		vars = append(vars, queryVars...)
 		name = fmt.Sprintf("%s#%s#%s", name, vhost.GetName(), prefix)
-		hosts := set.StringSet{}
-		for _, domain := range vhost.Domains {
-			if domain == "*" {
-				// If this route allows any domain to use, just don't set hosts
-				// in APISIX routes.
-				hosts = set.StringSet{}
-				break
-			} else {
-				if pos := strings.Index(domain, ":"); pos != -1 {
-					domain = domain[:pos]
-				}
-				hosts.Add(domain)
-			}
-		}
 		r := &apisix.Route{
 			Name:       name,
 			Priority:   int32(priority),
 			Status:     1,
 			Id:         id.GenID(name),
-			Hosts:      hosts.Strings(),
+			Hosts:      hosts,
 			Uris:       []string{uri},
 			UpstreamId: id.GenID(cluster),
 		}
