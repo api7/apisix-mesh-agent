@@ -15,7 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 // ensure the imports are used
@@ -30,27 +30,62 @@ var (
 	_ = time.Duration(0)
 	_ = (*url.URL)(nil)
 	_ = (*mail.Address)(nil)
-	_ = ptypes.DynamicAny{}
+	_ = anypb.Any{}
 )
 
-// define the regex for a UUID once up-front
-var _upstream_uuidPattern = regexp.MustCompile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
-
 // Validate checks the field values on Upstream with the rules defined in the
-// proto definition for this message. If any rules are violated, an error is returned.
+// proto definition for this message. If any rules are violated, the first
+// error encountered is returned, or nil if there are no violations.
 func (m *Upstream) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on Upstream with the rules defined in
+// the proto definition for this message. If any rules are violated, the
+// result is a list of violation errors wrapped in UpstreamMultiError, or nil
+// if none found.
+func (m *Upstream) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *Upstream) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
 
+	var errors []error
+
 	if m.GetRetries() < 0 {
-		return UpstreamValidationError{
+		err := UpstreamValidationError{
 			field:  "Retries",
 			reason: "value must be greater than or equal to 0",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
-	if v, ok := interface{}(m.GetTimeout()).(interface{ Validate() error }); ok {
+	if all {
+		switch v := interface{}(m.GetTimeout()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, UpstreamValidationError{
+					field:  "Timeout",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, UpstreamValidationError{
+					field:  "Timeout",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetTimeout()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return UpstreamValidationError{
 				field:  "Timeout",
@@ -61,22 +96,49 @@ func (m *Upstream) Validate() error {
 	}
 
 	if _, ok := _Upstream_Type_InLookup[m.GetType()]; !ok {
-		return UpstreamValidationError{
+		err := UpstreamValidationError{
 			field:  "Type",
 			reason: "value must be in list [chash roundrobin ewma lease_conn]",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if _, ok := _Upstream_HashOn_InLookup[m.GetHashOn()]; !ok {
-		return UpstreamValidationError{
+		err := UpstreamValidationError{
 			field:  "HashOn",
 			reason: "value must be in list [vars header cookie consumer vars_combination]",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	// no validation rules for Key
 
-	if v, ok := interface{}(m.GetCheck()).(interface{ Validate() error }); ok {
+	if all {
+		switch v := interface{}(m.GetCheck()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, UpstreamValidationError{
+					field:  "Check",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, UpstreamValidationError{
+					field:  "Check",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetCheck()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return UpstreamValidationError{
 				field:  "Check",
@@ -87,38 +149,58 @@ func (m *Upstream) Validate() error {
 	}
 
 	if _, ok := _Upstream_Scheme_InLookup[m.GetScheme()]; !ok {
-		return UpstreamValidationError{
+		err := UpstreamValidationError{
 			field:  "Scheme",
 			reason: "value must be in list [grpc grpcs http https]",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if _, ok := _Upstream_PassHost_InLookup[m.GetPassHost()]; !ok {
-		return UpstreamValidationError{
+		err := UpstreamValidationError{
 			field:  "PassHost",
 			reason: "value must be in list [pass node rewrite]",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if !_Upstream_UpstreamHost_Pattern.MatchString(m.GetUpstreamHost()) {
-		return UpstreamValidationError{
+		err := UpstreamValidationError{
 			field:  "UpstreamHost",
 			reason: "value does not match regex pattern \"^\\\\*?[0-9a-zA-Z-._]+$\"",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if l := utf8.RuneCountInString(m.GetName()); l < 1 || l > 100 {
-		return UpstreamValidationError{
+		err := UpstreamValidationError{
 			field:  "Name",
 			reason: "value length must be between 1 and 100 runes, inclusive",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if utf8.RuneCountInString(m.GetDesc()) > 256 {
-		return UpstreamValidationError{
+		err := UpstreamValidationError{
 			field:  "Desc",
 			reason: "value length must be at most 256 runes",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	// no validation rules for Id
@@ -126,7 +208,26 @@ func (m *Upstream) Validate() error {
 	for idx, item := range m.GetNodes() {
 		_, _ = idx, item
 
-		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+		if all {
+			switch v := interface{}(item).(type) {
+			case interface{ ValidateAll() error }:
+				if err := v.ValidateAll(); err != nil {
+					errors = append(errors, UpstreamValidationError{
+						field:  fmt.Sprintf("Nodes[%v]", idx),
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			case interface{ Validate() error }:
+				if err := v.Validate(); err != nil {
+					errors = append(errors, UpstreamValidationError{
+						field:  fmt.Sprintf("Nodes[%v]", idx),
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			}
+		} else if v, ok := interface{}(item).(interface{ Validate() error }); ok {
 			if err := v.Validate(); err != nil {
 				return UpstreamValidationError{
 					field:  fmt.Sprintf("Nodes[%v]", idx),
@@ -138,8 +239,27 @@ func (m *Upstream) Validate() error {
 
 	}
 
+	if len(errors) > 0 {
+		return UpstreamMultiError(errors)
+	}
 	return nil
 }
+
+// UpstreamMultiError is an error wrapping multiple validation errors returned
+// by Upstream.ValidateAll() if the designated constraints aren't met.
+type UpstreamMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m UpstreamMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m UpstreamMultiError) AllErrors() []error { return m }
 
 // UpstreamValidationError is the validation error returned by
 // Upstream.Validate if the designated constraints aren't met.
@@ -226,21 +346,58 @@ var _Upstream_PassHost_InLookup = map[string]struct{}{
 var _Upstream_UpstreamHost_Pattern = regexp.MustCompile("^\\*?[0-9a-zA-Z-._]+$")
 
 // Validate checks the field values on HealthCheck with the rules defined in
-// the proto definition for this message. If any rules are violated, an error
-// is returned.
+// the proto definition for this message. If any rules are violated, the first
+// error encountered is returned, or nil if there are no violations.
 func (m *HealthCheck) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on HealthCheck with the rules defined in
+// the proto definition for this message. If any rules are violated, the
+// result is a list of violation errors wrapped in HealthCheckMultiError, or
+// nil if none found.
+func (m *HealthCheck) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *HealthCheck) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
 
+	var errors []error
+
 	if m.GetActive() == nil {
-		return HealthCheckValidationError{
+		err := HealthCheckValidationError{
 			field:  "Active",
 			reason: "value is required",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
-	if v, ok := interface{}(m.GetActive()).(interface{ Validate() error }); ok {
+	if all {
+		switch v := interface{}(m.GetActive()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, HealthCheckValidationError{
+					field:  "Active",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, HealthCheckValidationError{
+					field:  "Active",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetActive()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return HealthCheckValidationError{
 				field:  "Active",
@@ -250,7 +407,26 @@ func (m *HealthCheck) Validate() error {
 		}
 	}
 
-	if v, ok := interface{}(m.GetPassive()).(interface{ Validate() error }); ok {
+	if all {
+		switch v := interface{}(m.GetPassive()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, HealthCheckValidationError{
+					field:  "Passive",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, HealthCheckValidationError{
+					field:  "Passive",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetPassive()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return HealthCheckValidationError{
 				field:  "Passive",
@@ -260,8 +436,27 @@ func (m *HealthCheck) Validate() error {
 		}
 	}
 
+	if len(errors) > 0 {
+		return HealthCheckMultiError(errors)
+	}
 	return nil
 }
+
+// HealthCheckMultiError is an error wrapping multiple validation errors
+// returned by HealthCheck.ValidateAll() if the designated constraints aren't met.
+type HealthCheckMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m HealthCheckMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m HealthCheckMultiError) AllErrors() []error { return m }
 
 // HealthCheckValidationError is the validation error returned by
 // HealthCheck.Validate if the designated constraints aren't met.
@@ -318,51 +513,116 @@ var _ interface {
 } = HealthCheckValidationError{}
 
 // Validate checks the field values on ActiveHealthCheck with the rules defined
-// in the proto definition for this message. If any rules are violated, an
-// error is returned.
+// in the proto definition for this message. If any rules are violated, the
+// first error encountered is returned, or nil if there are no violations.
 func (m *ActiveHealthCheck) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on ActiveHealthCheck with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// ActiveHealthCheckMultiError, or nil if none found.
+func (m *ActiveHealthCheck) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *ActiveHealthCheck) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
 
+	var errors []error
+
 	if _, ok := _ActiveHealthCheck_Type_InLookup[m.GetType()]; !ok {
-		return ActiveHealthCheckValidationError{
+		err := ActiveHealthCheckValidationError{
 			field:  "Type",
 			reason: "value must be in list [http https tcp]",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
-	if m.GetTimeout() < 0 {
-		return ActiveHealthCheckValidationError{
-			field:  "Timeout",
-			reason: "value must be greater than or equal to 0",
+	if m.GetTimeout() != 0 {
+
+		if m.GetTimeout() < 0 {
+			err := ActiveHealthCheckValidationError{
+				field:  "Timeout",
+				reason: "value must be greater than or equal to 0",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		}
+
 	}
 
-	if m.GetConcurrency() < 0 {
-		return ActiveHealthCheckValidationError{
-			field:  "Concurrency",
-			reason: "value must be greater than or equal to 0",
+	if m.GetConcurrency() != 0 {
+
+		if m.GetConcurrency() < 0 {
+			err := ActiveHealthCheckValidationError{
+				field:  "Concurrency",
+				reason: "value must be greater than or equal to 0",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		}
+
 	}
 
 	if !_ActiveHealthCheck_Host_Pattern.MatchString(m.GetHost()) {
-		return ActiveHealthCheckValidationError{
+		err := ActiveHealthCheckValidationError{
 			field:  "Host",
 			reason: "value does not match regex pattern \"^\\\\*?[0-9a-zA-Z-._]+$\"",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if val := m.GetPort(); val < 1 || val > 65535 {
-		return ActiveHealthCheckValidationError{
+		err := ActiveHealthCheckValidationError{
 			field:  "Port",
 			reason: "value must be inside range [1, 65535]",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
+
+	if m.GetHttpPath() != "" {
+
 	}
 
 	// no validation rules for HttpsVerifyCertificate
 
-	if v, ok := interface{}(m.GetHealthy()).(interface{ Validate() error }); ok {
+	if all {
+		switch v := interface{}(m.GetHealthy()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, ActiveHealthCheckValidationError{
+					field:  "Healthy",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, ActiveHealthCheckValidationError{
+					field:  "Healthy",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetHealthy()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return ActiveHealthCheckValidationError{
 				field:  "Healthy",
@@ -372,7 +632,26 @@ func (m *ActiveHealthCheck) Validate() error {
 		}
 	}
 
-	if v, ok := interface{}(m.GetUnhealthy()).(interface{ Validate() error }); ok {
+	if all {
+		switch v := interface{}(m.GetUnhealthy()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, ActiveHealthCheckValidationError{
+					field:  "Unhealthy",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, ActiveHealthCheckValidationError{
+					field:  "Unhealthy",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetUnhealthy()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return ActiveHealthCheckValidationError{
 				field:  "Unhealthy",
@@ -382,32 +661,64 @@ func (m *ActiveHealthCheck) Validate() error {
 		}
 	}
 
-	if len(m.GetReqHeaders()) < 1 {
-		return ActiveHealthCheckValidationError{
-			field:  "ReqHeaders",
-			reason: "value must contain at least 1 item(s)",
-		}
-	}
+	if len(m.GetReqHeaders()) > 0 {
 
-	_ActiveHealthCheck_ReqHeaders_Unique := make(map[string]struct{}, len(m.GetReqHeaders()))
-
-	for idx, item := range m.GetReqHeaders() {
-		_, _ = idx, item
-
-		if _, exists := _ActiveHealthCheck_ReqHeaders_Unique[item]; exists {
-			return ActiveHealthCheckValidationError{
-				field:  fmt.Sprintf("ReqHeaders[%v]", idx),
-				reason: "repeated value must contain unique items",
+		if len(m.GetReqHeaders()) < 1 {
+			err := ActiveHealthCheckValidationError{
+				field:  "ReqHeaders",
+				reason: "value must contain at least 1 item(s)",
 			}
-		} else {
-			_ActiveHealthCheck_ReqHeaders_Unique[item] = struct{}{}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		}
 
-		// no validation rules for ReqHeaders[idx]
+		_ActiveHealthCheck_ReqHeaders_Unique := make(map[string]struct{}, len(m.GetReqHeaders()))
+
+		for idx, item := range m.GetReqHeaders() {
+			_, _ = idx, item
+
+			if _, exists := _ActiveHealthCheck_ReqHeaders_Unique[item]; exists {
+				err := ActiveHealthCheckValidationError{
+					field:  fmt.Sprintf("ReqHeaders[%v]", idx),
+					reason: "repeated value must contain unique items",
+				}
+				if !all {
+					return err
+				}
+				errors = append(errors, err)
+			} else {
+				_ActiveHealthCheck_ReqHeaders_Unique[item] = struct{}{}
+			}
+
+			// no validation rules for ReqHeaders[idx]
+		}
+
 	}
 
+	if len(errors) > 0 {
+		return ActiveHealthCheckMultiError(errors)
+	}
 	return nil
 }
+
+// ActiveHealthCheckMultiError is an error wrapping multiple validation errors
+// returned by ActiveHealthCheck.ValidateAll() if the designated constraints
+// aren't met.
+type ActiveHealthCheckMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m ActiveHealthCheckMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m ActiveHealthCheckMultiError) AllErrors() []error { return m }
 
 // ActiveHealthCheckValidationError is the validation error returned by
 // ActiveHealthCheck.Validate if the designated constraints aren't met.
@@ -475,20 +786,57 @@ var _ActiveHealthCheck_Host_Pattern = regexp.MustCompile("^\\*?[0-9a-zA-Z-._]+$"
 
 // Validate checks the field values on PassiveHealthCheck with the rules
 // defined in the proto definition for this message. If any rules are
-// violated, an error is returned.
+// violated, the first error encountered is returned, or nil if there are no violations.
 func (m *PassiveHealthCheck) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on PassiveHealthCheck with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// PassiveHealthCheckMultiError, or nil if none found.
+func (m *PassiveHealthCheck) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *PassiveHealthCheck) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
 
+	var errors []error
+
 	if _, ok := _PassiveHealthCheck_Type_InLookup[m.GetType()]; !ok {
-		return PassiveHealthCheckValidationError{
+		err := PassiveHealthCheckValidationError{
 			field:  "Type",
 			reason: "value must be in list [http https tcp]",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
-	if v, ok := interface{}(m.GetHealthy()).(interface{ Validate() error }); ok {
+	if all {
+		switch v := interface{}(m.GetHealthy()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, PassiveHealthCheckValidationError{
+					field:  "Healthy",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, PassiveHealthCheckValidationError{
+					field:  "Healthy",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetHealthy()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return PassiveHealthCheckValidationError{
 				field:  "Healthy",
@@ -498,7 +846,26 @@ func (m *PassiveHealthCheck) Validate() error {
 		}
 	}
 
-	if v, ok := interface{}(m.GetUnhealthy()).(interface{ Validate() error }); ok {
+	if all {
+		switch v := interface{}(m.GetUnhealthy()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, PassiveHealthCheckValidationError{
+					field:  "Unhealthy",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, PassiveHealthCheckValidationError{
+					field:  "Unhealthy",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetUnhealthy()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return PassiveHealthCheckValidationError{
 				field:  "Unhealthy",
@@ -508,8 +875,28 @@ func (m *PassiveHealthCheck) Validate() error {
 		}
 	}
 
+	if len(errors) > 0 {
+		return PassiveHealthCheckMultiError(errors)
+	}
 	return nil
 }
+
+// PassiveHealthCheckMultiError is an error wrapping multiple validation errors
+// returned by PassiveHealthCheck.ValidateAll() if the designated constraints
+// aren't met.
+type PassiveHealthCheckMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m PassiveHealthCheckMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m PassiveHealthCheckMultiError) AllErrors() []error { return m }
 
 // PassiveHealthCheckValidationError is the validation error returned by
 // PassiveHealthCheck.Validate if the designated constraints aren't met.
@@ -575,58 +962,124 @@ var _PassiveHealthCheck_Type_InLookup = map[string]struct{}{
 
 // Validate checks the field values on ActiveHealthCheckHealthy with the rules
 // defined in the proto definition for this message. If any rules are
-// violated, an error is returned.
+// violated, the first error encountered is returned, or nil if there are no violations.
 func (m *ActiveHealthCheckHealthy) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on ActiveHealthCheckHealthy with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// ActiveHealthCheckHealthyMultiError, or nil if none found.
+func (m *ActiveHealthCheckHealthy) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *ActiveHealthCheckHealthy) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
 
-	if m.GetInterval() < 1 {
-		return ActiveHealthCheckHealthyValidationError{
-			field:  "Interval",
-			reason: "value must be greater than or equal to 1",
-		}
-	}
+	var errors []error
 
-	if len(m.GetHttpStatuses()) < 1 {
-		return ActiveHealthCheckHealthyValidationError{
-			field:  "HttpStatuses",
-			reason: "value must contain at least 1 item(s)",
-		}
-	}
+	if m.GetInterval() != 0 {
 
-	_ActiveHealthCheckHealthy_HttpStatuses_Unique := make(map[int32]struct{}, len(m.GetHttpStatuses()))
-
-	for idx, item := range m.GetHttpStatuses() {
-		_, _ = idx, item
-
-		if _, exists := _ActiveHealthCheckHealthy_HttpStatuses_Unique[item]; exists {
-			return ActiveHealthCheckHealthyValidationError{
-				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
-				reason: "repeated value must contain unique items",
+		if m.GetInterval() < 1 {
+			err := ActiveHealthCheckHealthyValidationError{
+				field:  "Interval",
+				reason: "value must be greater than or equal to 1",
 			}
-		} else {
-			_ActiveHealthCheckHealthy_HttpStatuses_Unique[item] = struct{}{}
-		}
-
-		if val := item; val < 200 || val > 599 {
-			return ActiveHealthCheckHealthyValidationError{
-				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
-				reason: "value must be inside range [200, 599]",
+			if !all {
+				return err
 			}
+			errors = append(errors, err)
 		}
 
 	}
 
-	if val := m.GetSuccesses(); val < 1 || val > 254 {
-		return ActiveHealthCheckHealthyValidationError{
-			field:  "Successes",
-			reason: "value must be inside range [1, 254]",
+	if len(m.GetHttpStatuses()) > 0 {
+
+		if len(m.GetHttpStatuses()) < 1 {
+			err := ActiveHealthCheckHealthyValidationError{
+				field:  "HttpStatuses",
+				reason: "value must contain at least 1 item(s)",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		}
+
+		_ActiveHealthCheckHealthy_HttpStatuses_Unique := make(map[int32]struct{}, len(m.GetHttpStatuses()))
+
+		for idx, item := range m.GetHttpStatuses() {
+			_, _ = idx, item
+
+			if _, exists := _ActiveHealthCheckHealthy_HttpStatuses_Unique[item]; exists {
+				err := ActiveHealthCheckHealthyValidationError{
+					field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+					reason: "repeated value must contain unique items",
+				}
+				if !all {
+					return err
+				}
+				errors = append(errors, err)
+			} else {
+				_ActiveHealthCheckHealthy_HttpStatuses_Unique[item] = struct{}{}
+			}
+
+			if val := item; val < 200 || val > 599 {
+				err := ActiveHealthCheckHealthyValidationError{
+					field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+					reason: "value must be inside range [200, 599]",
+				}
+				if !all {
+					return err
+				}
+				errors = append(errors, err)
+			}
+
+		}
+
 	}
 
+	if m.GetSuccesses() != 0 {
+
+		if val := m.GetSuccesses(); val < 1 || val > 254 {
+			err := ActiveHealthCheckHealthyValidationError{
+				field:  "Successes",
+				reason: "value must be inside range [1, 254]",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
+		}
+
+	}
+
+	if len(errors) > 0 {
+		return ActiveHealthCheckHealthyMultiError(errors)
+	}
 	return nil
 }
+
+// ActiveHealthCheckHealthyMultiError is an error wrapping multiple validation
+// errors returned by ActiveHealthCheckHealthy.ValidateAll() if the designated
+// constraints aren't met.
+type ActiveHealthCheckHealthyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m ActiveHealthCheckHealthyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m ActiveHealthCheckHealthyMultiError) AllErrors() []error { return m }
 
 // ActiveHealthCheckHealthyValidationError is the validation error returned by
 // ActiveHealthCheckHealthy.Validate if the designated constraints aren't met.
@@ -686,72 +1139,154 @@ var _ interface {
 
 // Validate checks the field values on ActiveHealthCheckUnhealthy with the
 // rules defined in the proto definition for this message. If any rules are
-// violated, an error is returned.
+// violated, the first error encountered is returned, or nil if there are no violations.
 func (m *ActiveHealthCheckUnhealthy) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on ActiveHealthCheckUnhealthy with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// ActiveHealthCheckUnhealthyMultiError, or nil if none found.
+func (m *ActiveHealthCheckUnhealthy) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *ActiveHealthCheckUnhealthy) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
 
-	if m.GetInterval() < 1 {
-		return ActiveHealthCheckUnhealthyValidationError{
-			field:  "Interval",
-			reason: "value must be greater than or equal to 1",
-		}
-	}
+	var errors []error
 
-	if len(m.GetHttpStatuses()) < 1 {
-		return ActiveHealthCheckUnhealthyValidationError{
-			field:  "HttpStatuses",
-			reason: "value must contain at least 1 item(s)",
-		}
-	}
+	if m.GetInterval() != 0 {
 
-	_ActiveHealthCheckUnhealthy_HttpStatuses_Unique := make(map[int32]struct{}, len(m.GetHttpStatuses()))
-
-	for idx, item := range m.GetHttpStatuses() {
-		_, _ = idx, item
-
-		if _, exists := _ActiveHealthCheckUnhealthy_HttpStatuses_Unique[item]; exists {
-			return ActiveHealthCheckUnhealthyValidationError{
-				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
-				reason: "repeated value must contain unique items",
+		if m.GetInterval() < 1 {
+			err := ActiveHealthCheckUnhealthyValidationError{
+				field:  "Interval",
+				reason: "value must be greater than or equal to 1",
 			}
-		} else {
-			_ActiveHealthCheckUnhealthy_HttpStatuses_Unique[item] = struct{}{}
-		}
-
-		if val := item; val < 200 || val > 599 {
-			return ActiveHealthCheckUnhealthyValidationError{
-				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
-				reason: "value must be inside range [200, 599]",
+			if !all {
+				return err
 			}
+			errors = append(errors, err)
 		}
 
 	}
 
-	if val := m.GetHttpFailures(); val < 1 || val > 254 {
-		return ActiveHealthCheckUnhealthyValidationError{
-			field:  "HttpFailures",
-			reason: "value must be inside range [1, 254]",
+	if len(m.GetHttpStatuses()) > 0 {
+
+		if len(m.GetHttpStatuses()) < 1 {
+			err := ActiveHealthCheckUnhealthyValidationError{
+				field:  "HttpStatuses",
+				reason: "value must contain at least 1 item(s)",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		}
+
+		_ActiveHealthCheckUnhealthy_HttpStatuses_Unique := make(map[int32]struct{}, len(m.GetHttpStatuses()))
+
+		for idx, item := range m.GetHttpStatuses() {
+			_, _ = idx, item
+
+			if _, exists := _ActiveHealthCheckUnhealthy_HttpStatuses_Unique[item]; exists {
+				err := ActiveHealthCheckUnhealthyValidationError{
+					field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+					reason: "repeated value must contain unique items",
+				}
+				if !all {
+					return err
+				}
+				errors = append(errors, err)
+			} else {
+				_ActiveHealthCheckUnhealthy_HttpStatuses_Unique[item] = struct{}{}
+			}
+
+			if val := item; val < 200 || val > 599 {
+				err := ActiveHealthCheckUnhealthyValidationError{
+					field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+					reason: "value must be inside range [200, 599]",
+				}
+				if !all {
+					return err
+				}
+				errors = append(errors, err)
+			}
+
+		}
+
 	}
 
-	if val := m.GetTcpFailures(); val < 1 || val > 254 {
-		return ActiveHealthCheckUnhealthyValidationError{
-			field:  "TcpFailures",
-			reason: "value must be inside range [1, 254]",
+	if m.GetHttpFailures() != 0 {
+
+		if val := m.GetHttpFailures(); val < 1 || val > 254 {
+			err := ActiveHealthCheckUnhealthyValidationError{
+				field:  "HttpFailures",
+				reason: "value must be inside range [1, 254]",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		}
+
 	}
 
-	if val := m.GetTimeouts(); val < 1 || val > 254 {
-		return ActiveHealthCheckUnhealthyValidationError{
-			field:  "Timeouts",
-			reason: "value must be inside range [1, 254]",
+	if m.GetTcpFailures() != 0 {
+
+		if val := m.GetTcpFailures(); val < 1 || val > 254 {
+			err := ActiveHealthCheckUnhealthyValidationError{
+				field:  "TcpFailures",
+				reason: "value must be inside range [1, 254]",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		}
+
 	}
 
+	if m.GetTimeouts() != 0 {
+
+		if val := m.GetTimeouts(); val < 1 || val > 254 {
+			err := ActiveHealthCheckUnhealthyValidationError{
+				field:  "Timeouts",
+				reason: "value must be inside range [1, 254]",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
+		}
+
+	}
+
+	if len(errors) > 0 {
+		return ActiveHealthCheckUnhealthyMultiError(errors)
+	}
 	return nil
 }
+
+// ActiveHealthCheckUnhealthyMultiError is an error wrapping multiple
+// validation errors returned by ActiveHealthCheckUnhealthy.ValidateAll() if
+// the designated constraints aren't met.
+type ActiveHealthCheckUnhealthyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m ActiveHealthCheckUnhealthyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m ActiveHealthCheckUnhealthyMultiError) AllErrors() []error { return m }
 
 // ActiveHealthCheckUnhealthyValidationError is the validation error returned
 // by ActiveHealthCheckUnhealthy.Validate if the designated constraints aren't met.
@@ -811,51 +1346,109 @@ var _ interface {
 
 // Validate checks the field values on PassiveHealthCheckHealthy with the rules
 // defined in the proto definition for this message. If any rules are
-// violated, an error is returned.
+// violated, the first error encountered is returned, or nil if there are no violations.
 func (m *PassiveHealthCheckHealthy) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on PassiveHealthCheckHealthy with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// PassiveHealthCheckHealthyMultiError, or nil if none found.
+func (m *PassiveHealthCheckHealthy) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *PassiveHealthCheckHealthy) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
 
-	if len(m.GetHttpStatuses()) < 1 {
-		return PassiveHealthCheckHealthyValidationError{
-			field:  "HttpStatuses",
-			reason: "value must contain at least 1 item(s)",
-		}
-	}
+	var errors []error
 
-	_PassiveHealthCheckHealthy_HttpStatuses_Unique := make(map[int32]struct{}, len(m.GetHttpStatuses()))
+	if len(m.GetHttpStatuses()) > 0 {
 
-	for idx, item := range m.GetHttpStatuses() {
-		_, _ = idx, item
-
-		if _, exists := _PassiveHealthCheckHealthy_HttpStatuses_Unique[item]; exists {
-			return PassiveHealthCheckHealthyValidationError{
-				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
-				reason: "repeated value must contain unique items",
+		if len(m.GetHttpStatuses()) < 1 {
+			err := PassiveHealthCheckHealthyValidationError{
+				field:  "HttpStatuses",
+				reason: "value must contain at least 1 item(s)",
 			}
-		} else {
-			_PassiveHealthCheckHealthy_HttpStatuses_Unique[item] = struct{}{}
-		}
-
-		if val := item; val < 200 || val > 599 {
-			return PassiveHealthCheckHealthyValidationError{
-				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
-				reason: "value must be inside range [200, 599]",
+			if !all {
+				return err
 			}
+			errors = append(errors, err)
+		}
+
+		_PassiveHealthCheckHealthy_HttpStatuses_Unique := make(map[int32]struct{}, len(m.GetHttpStatuses()))
+
+		for idx, item := range m.GetHttpStatuses() {
+			_, _ = idx, item
+
+			if _, exists := _PassiveHealthCheckHealthy_HttpStatuses_Unique[item]; exists {
+				err := PassiveHealthCheckHealthyValidationError{
+					field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+					reason: "repeated value must contain unique items",
+				}
+				if !all {
+					return err
+				}
+				errors = append(errors, err)
+			} else {
+				_PassiveHealthCheckHealthy_HttpStatuses_Unique[item] = struct{}{}
+			}
+
+			if val := item; val < 200 || val > 599 {
+				err := PassiveHealthCheckHealthyValidationError{
+					field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+					reason: "value must be inside range [200, 599]",
+				}
+				if !all {
+					return err
+				}
+				errors = append(errors, err)
+			}
+
 		}
 
 	}
 
-	if val := m.GetSuccesses(); val < 1 || val > 254 {
-		return PassiveHealthCheckHealthyValidationError{
-			field:  "Successes",
-			reason: "value must be inside range [1, 254]",
+	if m.GetSuccesses() != 0 {
+
+		if val := m.GetSuccesses(); val < 1 || val > 254 {
+			err := PassiveHealthCheckHealthyValidationError{
+				field:  "Successes",
+				reason: "value must be inside range [1, 254]",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		}
+
 	}
 
+	if len(errors) > 0 {
+		return PassiveHealthCheckHealthyMultiError(errors)
+	}
 	return nil
 }
+
+// PassiveHealthCheckHealthyMultiError is an error wrapping multiple validation
+// errors returned by PassiveHealthCheckHealthy.ValidateAll() if the
+// designated constraints aren't met.
+type PassiveHealthCheckHealthyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m PassiveHealthCheckHealthyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m PassiveHealthCheckHealthyMultiError) AllErrors() []error { return m }
 
 // PassiveHealthCheckHealthyValidationError is the validation error returned by
 // PassiveHealthCheckHealthy.Validate if the designated constraints aren't met.
@@ -915,65 +1508,139 @@ var _ interface {
 
 // Validate checks the field values on PassiveHealthCheckUnhealthy with the
 // rules defined in the proto definition for this message. If any rules are
-// violated, an error is returned.
+// violated, the first error encountered is returned, or nil if there are no violations.
 func (m *PassiveHealthCheckUnhealthy) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on PassiveHealthCheckUnhealthy with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// PassiveHealthCheckUnhealthyMultiError, or nil if none found.
+func (m *PassiveHealthCheckUnhealthy) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *PassiveHealthCheckUnhealthy) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
 
-	if len(m.GetHttpStatuses()) < 1 {
-		return PassiveHealthCheckUnhealthyValidationError{
-			field:  "HttpStatuses",
-			reason: "value must contain at least 1 item(s)",
-		}
-	}
+	var errors []error
 
-	_PassiveHealthCheckUnhealthy_HttpStatuses_Unique := make(map[int32]struct{}, len(m.GetHttpStatuses()))
+	if len(m.GetHttpStatuses()) > 0 {
 
-	for idx, item := range m.GetHttpStatuses() {
-		_, _ = idx, item
-
-		if _, exists := _PassiveHealthCheckUnhealthy_HttpStatuses_Unique[item]; exists {
-			return PassiveHealthCheckUnhealthyValidationError{
-				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
-				reason: "repeated value must contain unique items",
+		if len(m.GetHttpStatuses()) < 1 {
+			err := PassiveHealthCheckUnhealthyValidationError{
+				field:  "HttpStatuses",
+				reason: "value must contain at least 1 item(s)",
 			}
-		} else {
-			_PassiveHealthCheckUnhealthy_HttpStatuses_Unique[item] = struct{}{}
-		}
-
-		if val := item; val < 200 || val > 599 {
-			return PassiveHealthCheckUnhealthyValidationError{
-				field:  fmt.Sprintf("HttpStatuses[%v]", idx),
-				reason: "value must be inside range [200, 599]",
+			if !all {
+				return err
 			}
+			errors = append(errors, err)
+		}
+
+		_PassiveHealthCheckUnhealthy_HttpStatuses_Unique := make(map[int32]struct{}, len(m.GetHttpStatuses()))
+
+		for idx, item := range m.GetHttpStatuses() {
+			_, _ = idx, item
+
+			if _, exists := _PassiveHealthCheckUnhealthy_HttpStatuses_Unique[item]; exists {
+				err := PassiveHealthCheckUnhealthyValidationError{
+					field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+					reason: "repeated value must contain unique items",
+				}
+				if !all {
+					return err
+				}
+				errors = append(errors, err)
+			} else {
+				_PassiveHealthCheckUnhealthy_HttpStatuses_Unique[item] = struct{}{}
+			}
+
+			if val := item; val < 200 || val > 599 {
+				err := PassiveHealthCheckUnhealthyValidationError{
+					field:  fmt.Sprintf("HttpStatuses[%v]", idx),
+					reason: "value must be inside range [200, 599]",
+				}
+				if !all {
+					return err
+				}
+				errors = append(errors, err)
+			}
+
 		}
 
 	}
 
-	if val := m.GetHttpFailures(); val < 1 || val > 254 {
-		return PassiveHealthCheckUnhealthyValidationError{
-			field:  "HttpFailures",
-			reason: "value must be inside range [1, 254]",
+	if m.GetHttpFailures() != 0 {
+
+		if val := m.GetHttpFailures(); val < 1 || val > 254 {
+			err := PassiveHealthCheckUnhealthyValidationError{
+				field:  "HttpFailures",
+				reason: "value must be inside range [1, 254]",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		}
+
 	}
 
-	if val := m.GetTcpFailures(); val < 1 || val > 254 {
-		return PassiveHealthCheckUnhealthyValidationError{
-			field:  "TcpFailures",
-			reason: "value must be inside range [1, 254]",
+	if m.GetTcpFailures() != 0 {
+
+		if val := m.GetTcpFailures(); val < 1 || val > 254 {
+			err := PassiveHealthCheckUnhealthyValidationError{
+				field:  "TcpFailures",
+				reason: "value must be inside range [1, 254]",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		}
+
 	}
 
-	if val := m.GetTimeouts(); val < 1 || val > 254 {
-		return PassiveHealthCheckUnhealthyValidationError{
-			field:  "Timeouts",
-			reason: "value must be inside range [1, 254]",
+	if m.GetTimeouts() != 0 {
+
+		if val := m.GetTimeouts(); val < 1 || val > 254 {
+			err := PassiveHealthCheckUnhealthyValidationError{
+				field:  "Timeouts",
+				reason: "value must be inside range [1, 254]",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		}
+
 	}
 
+	if len(errors) > 0 {
+		return PassiveHealthCheckUnhealthyMultiError(errors)
+	}
 	return nil
 }
+
+// PassiveHealthCheckUnhealthyMultiError is an error wrapping multiple
+// validation errors returned by PassiveHealthCheckUnhealthy.ValidateAll() if
+// the designated constraints aren't met.
+type PassiveHealthCheckUnhealthyMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m PassiveHealthCheckUnhealthyMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m PassiveHealthCheckUnhealthyMultiError) AllErrors() []error { return m }
 
 // PassiveHealthCheckUnhealthyValidationError is the validation error returned
 // by PassiveHealthCheckUnhealthy.Validate if the designated constraints
@@ -1033,31 +1700,57 @@ var _ interface {
 } = PassiveHealthCheckUnhealthyValidationError{}
 
 // Validate checks the field values on Node with the rules defined in the proto
-// definition for this message. If any rules are violated, an error is returned.
+// definition for this message. If any rules are violated, the first error
+// encountered is returned, or nil if there are no violations.
 func (m *Node) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on Node with the rules defined in the
+// proto definition for this message. If any rules are violated, the result is
+// a list of violation errors wrapped in NodeMultiError, or nil if none found.
+func (m *Node) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *Node) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
 
+	var errors []error
+
 	if !_Node_Host_Pattern.MatchString(m.GetHost()) {
-		return NodeValidationError{
+		err := NodeValidationError{
 			field:  "Host",
 			reason: "value does not match regex pattern \"^\\\\*?[0-9a-zA-Z-._]+$\"",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if val := m.GetPort(); val < 1 || val > 65535 {
-		return NodeValidationError{
+		err := NodeValidationError{
 			field:  "Port",
 			reason: "value must be inside range [1, 65535]",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if m.GetWeight() < 0 {
-		return NodeValidationError{
+		err := NodeValidationError{
 			field:  "Weight",
 			reason: "value must be greater than or equal to 0",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	for key, val := range m.GetMetadata() {
@@ -1065,7 +1758,26 @@ func (m *Node) Validate() error {
 
 		// no validation rules for Metadata[key]
 
-		if v, ok := interface{}(val).(interface{ Validate() error }); ok {
+		if all {
+			switch v := interface{}(val).(type) {
+			case interface{ ValidateAll() error }:
+				if err := v.ValidateAll(); err != nil {
+					errors = append(errors, NodeValidationError{
+						field:  fmt.Sprintf("Metadata[%v]", key),
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			case interface{ Validate() error }:
+				if err := v.Validate(); err != nil {
+					errors = append(errors, NodeValidationError{
+						field:  fmt.Sprintf("Metadata[%v]", key),
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			}
+		} else if v, ok := interface{}(val).(interface{ Validate() error }); ok {
 			if err := v.Validate(); err != nil {
 				return NodeValidationError{
 					field:  fmt.Sprintf("Metadata[%v]", key),
@@ -1077,8 +1789,27 @@ func (m *Node) Validate() error {
 
 	}
 
+	if len(errors) > 0 {
+		return NodeMultiError(errors)
+	}
 	return nil
 }
+
+// NodeMultiError is an error wrapping multiple validation errors returned by
+// Node.ValidateAll() if the designated constraints aren't met.
+type NodeMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m NodeMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m NodeMultiError) AllErrors() []error { return m }
 
 // NodeValidationError is the validation error returned by Node.Validate if the
 // designated constraints aren't met.
@@ -1137,36 +1868,82 @@ var _ interface {
 var _Node_Host_Pattern = regexp.MustCompile("^\\*?[0-9a-zA-Z-._]+$")
 
 // Validate checks the field values on Upstream_Timeout with the rules defined
-// in the proto definition for this message. If any rules are violated, an
-// error is returned.
+// in the proto definition for this message. If any rules are violated, the
+// first error encountered is returned, or nil if there are no violations.
 func (m *Upstream_Timeout) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on Upstream_Timeout with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// Upstream_TimeoutMultiError, or nil if none found.
+func (m *Upstream_Timeout) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *Upstream_Timeout) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
 
+	var errors []error
+
 	if m.GetConnect() <= 0 {
-		return Upstream_TimeoutValidationError{
+		err := Upstream_TimeoutValidationError{
 			field:  "Connect",
 			reason: "value must be greater than 0",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if m.GetSend() <= 0 {
-		return Upstream_TimeoutValidationError{
+		err := Upstream_TimeoutValidationError{
 			field:  "Send",
 			reason: "value must be greater than 0",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if m.GetRead() <= 0 {
-		return Upstream_TimeoutValidationError{
+		err := Upstream_TimeoutValidationError{
 			field:  "Read",
 			reason: "value must be greater than 0",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
+	if len(errors) > 0 {
+		return Upstream_TimeoutMultiError(errors)
+	}
 	return nil
 }
+
+// Upstream_TimeoutMultiError is an error wrapping multiple validation errors
+// returned by Upstream_Timeout.ValidateAll() if the designated constraints
+// aren't met.
+type Upstream_TimeoutMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m Upstream_TimeoutMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m Upstream_TimeoutMultiError) AllErrors() []error { return m }
 
 // Upstream_TimeoutValidationError is the validation error returned by
 // Upstream_Timeout.Validate if the designated constraints aren't met.

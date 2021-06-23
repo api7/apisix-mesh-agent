@@ -15,7 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 // ensure the imports are used
@@ -30,24 +30,39 @@ var (
 	_ = time.Duration(0)
 	_ = (*url.URL)(nil)
 	_ = (*mail.Address)(nil)
-	_ = ptypes.DynamicAny{}
+	_ = anypb.Any{}
 )
 
-// define the regex for a UUID once up-front
-var _route_uuidPattern = regexp.MustCompile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
-
 // Validate checks the field values on Route with the rules defined in the
-// proto definition for this message. If any rules are violated, an error is returned.
+// proto definition for this message. If any rules are violated, the first
+// error encountered is returned, or nil if there are no violations.
 func (m *Route) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on Route with the rules defined in the
+// proto definition for this message. If any rules are violated, the result is
+// a list of violation errors wrapped in RouteMultiError, or nil if none found.
+func (m *Route) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *Route) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
 
+	var errors []error
+
 	if len(m.GetUris()) < 1 {
-		return RouteValidationError{
+		err := RouteValidationError{
 			field:  "Uris",
 			reason: "value must contain at least 1 item(s)",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	_Route_Uris_Unique := make(map[string]struct{}, len(m.GetUris()))
@@ -56,10 +71,14 @@ func (m *Route) Validate() error {
 		_, _ = idx, item
 
 		if _, exists := _Route_Uris_Unique[item]; exists {
-			return RouteValidationError{
+			err := RouteValidationError{
 				field:  fmt.Sprintf("Uris[%v]", idx),
 				reason: "repeated value must contain unique items",
 			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		} else {
 			_Route_Uris_Unique[item] = struct{}{}
 		}
@@ -68,19 +87,27 @@ func (m *Route) Validate() error {
 	}
 
 	if l := utf8.RuneCountInString(m.GetName()); l < 1 || l > 100 {
-		return RouteValidationError{
+		err := RouteValidationError{
 			field:  "Name",
 			reason: "value length must be between 1 and 100 runes, inclusive",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	// no validation rules for Id
 
 	if utf8.RuneCountInString(m.GetDesc()) > 256 {
-		return RouteValidationError{
+		err := RouteValidationError{
 			field:  "Desc",
 			reason: "value length must be at most 256 runes",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	// no validation rules for Priority
@@ -91,81 +118,136 @@ func (m *Route) Validate() error {
 		_, _ = idx, item
 
 		if _, exists := _Route_Methods_Unique[item]; exists {
-			return RouteValidationError{
+			err := RouteValidationError{
 				field:  fmt.Sprintf("Methods[%v]", idx),
 				reason: "repeated value must contain unique items",
 			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		} else {
 			_Route_Methods_Unique[item] = struct{}{}
 		}
 
 		if _, ok := _Route_Methods_InLookup[item]; !ok {
-			return RouteValidationError{
+			err := RouteValidationError{
 				field:  fmt.Sprintf("Methods[%v]", idx),
 				reason: "value must be in list [GET POST PUT DELETE PATCH HEAD OPTIONS CONNECT TRACE]",
 			}
-		}
-
-	}
-
-	if len(m.GetHosts()) < 1 {
-		return RouteValidationError{
-			field:  "Hosts",
-			reason: "value must contain at least 1 item(s)",
-		}
-	}
-
-	_Route_Hosts_Unique := make(map[string]struct{}, len(m.GetHosts()))
-
-	for idx, item := range m.GetHosts() {
-		_, _ = idx, item
-
-		if _, exists := _Route_Hosts_Unique[item]; exists {
-			return RouteValidationError{
-				field:  fmt.Sprintf("Hosts[%v]", idx),
-				reason: "repeated value must contain unique items",
+			if !all {
+				return err
 			}
-		} else {
-			_Route_Hosts_Unique[item] = struct{}{}
-		}
-
-		if !_Route_Hosts_Pattern.MatchString(item) {
-			return RouteValidationError{
-				field:  fmt.Sprintf("Hosts[%v]", idx),
-				reason: "value does not match regex pattern \"^\\\\*?[0-9a-zA-Z-._]+$\"",
-			}
+			errors = append(errors, err)
 		}
 
 	}
 
-	if len(m.GetRemoteAddrs()) < 1 {
-		return RouteValidationError{
-			field:  "RemoteAddrs",
-			reason: "value must contain at least 1 item(s)",
+	if len(m.GetHosts()) > 0 {
+
+		if len(m.GetHosts()) < 1 {
+			err := RouteValidationError{
+				field:  "Hosts",
+				reason: "value must contain at least 1 item(s)",
+			}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		}
+
+		_Route_Hosts_Unique := make(map[string]struct{}, len(m.GetHosts()))
+
+		for idx, item := range m.GetHosts() {
+			_, _ = idx, item
+
+			if _, exists := _Route_Hosts_Unique[item]; exists {
+				err := RouteValidationError{
+					field:  fmt.Sprintf("Hosts[%v]", idx),
+					reason: "repeated value must contain unique items",
+				}
+				if !all {
+					return err
+				}
+				errors = append(errors, err)
+			} else {
+				_Route_Hosts_Unique[item] = struct{}{}
+			}
+
+			if !_Route_Hosts_Pattern.MatchString(item) {
+				err := RouteValidationError{
+					field:  fmt.Sprintf("Hosts[%v]", idx),
+					reason: "value does not match regex pattern \"^\\\\*?[0-9a-zA-Z-._]+$\"",
+				}
+				if !all {
+					return err
+				}
+				errors = append(errors, err)
+			}
+
+		}
+
 	}
 
-	_Route_RemoteAddrs_Unique := make(map[string]struct{}, len(m.GetRemoteAddrs()))
+	if len(m.GetRemoteAddrs()) > 0 {
 
-	for idx, item := range m.GetRemoteAddrs() {
-		_, _ = idx, item
-
-		if _, exists := _Route_RemoteAddrs_Unique[item]; exists {
-			return RouteValidationError{
-				field:  fmt.Sprintf("RemoteAddrs[%v]", idx),
-				reason: "repeated value must contain unique items",
+		if len(m.GetRemoteAddrs()) < 1 {
+			err := RouteValidationError{
+				field:  "RemoteAddrs",
+				reason: "value must contain at least 1 item(s)",
 			}
-		} else {
-			_Route_RemoteAddrs_Unique[item] = struct{}{}
+			if !all {
+				return err
+			}
+			errors = append(errors, err)
 		}
 
-		// no validation rules for RemoteAddrs[idx]
+		_Route_RemoteAddrs_Unique := make(map[string]struct{}, len(m.GetRemoteAddrs()))
+
+		for idx, item := range m.GetRemoteAddrs() {
+			_, _ = idx, item
+
+			if _, exists := _Route_RemoteAddrs_Unique[item]; exists {
+				err := RouteValidationError{
+					field:  fmt.Sprintf("RemoteAddrs[%v]", idx),
+					reason: "repeated value must contain unique items",
+				}
+				if !all {
+					return err
+				}
+				errors = append(errors, err)
+			} else {
+				_Route_RemoteAddrs_Unique[item] = struct{}{}
+			}
+
+			// no validation rules for RemoteAddrs[idx]
+		}
+
 	}
 
 	for idx, item := range m.GetVars() {
 		_, _ = idx, item
 
-		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+		if all {
+			switch v := interface{}(item).(type) {
+			case interface{ ValidateAll() error }:
+				if err := v.ValidateAll(); err != nil {
+					errors = append(errors, RouteValidationError{
+						field:  fmt.Sprintf("Vars[%v]", idx),
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			case interface{ Validate() error }:
+				if err := v.Validate(); err != nil {
+					errors = append(errors, RouteValidationError{
+						field:  fmt.Sprintf("Vars[%v]", idx),
+						reason: "embedded message failed validation",
+						cause:  err,
+					})
+				}
+			}
+		} else if v, ok := interface{}(item).(interface{ Validate() error }); ok {
 			if err := v.Validate(); err != nil {
 				return RouteValidationError{
 					field:  fmt.Sprintf("Vars[%v]", idx),
@@ -177,7 +259,26 @@ func (m *Route) Validate() error {
 
 	}
 
-	if v, ok := interface{}(m.GetPlugins()).(interface{ Validate() error }); ok {
+	if all {
+		switch v := interface{}(m.GetPlugins()).(type) {
+		case interface{ ValidateAll() error }:
+			if err := v.ValidateAll(); err != nil {
+				errors = append(errors, RouteValidationError{
+					field:  "Plugins",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		case interface{ Validate() error }:
+			if err := v.Validate(); err != nil {
+				errors = append(errors, RouteValidationError{
+					field:  "Plugins",
+					reason: "embedded message failed validation",
+					cause:  err,
+				})
+			}
+		}
+	} else if v, ok := interface{}(m.GetPlugins()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
 			return RouteValidationError{
 				field:  "Plugins",
@@ -193,8 +294,27 @@ func (m *Route) Validate() error {
 
 	// no validation rules for Status
 
+	if len(errors) > 0 {
+		return RouteMultiError(errors)
+	}
 	return nil
 }
+
+// RouteMultiError is an error wrapping multiple validation errors returned by
+// Route.ValidateAll() if the designated constraints aren't met.
+type RouteMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m RouteMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m RouteMultiError) AllErrors() []error { return m }
 
 // RouteValidationError is the validation error returned by Route.Validate if
 // the designated constraints aren't met.
