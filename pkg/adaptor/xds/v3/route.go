@@ -64,9 +64,6 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 	var routes []*apisix.Route
 	// FIXME Respect the CaseSensitive field.
 	for _, route := range vhost.GetRoutes() {
-		adaptor.logger.Debugw("translating envoy route",
-			zap.Any("route", route),
-		)
 		sensitive := route.GetMatch().CaseSensitive
 		if sensitive != nil && !sensitive.GetValue() {
 			// Apache APISIX doesn't support case insensitive URI match,
@@ -207,7 +204,7 @@ func (adaptor *adaptor) getParametersMatchVars(route *routev3.Route) ([]*apisix.
 
 func (adaptor *adaptor) getHeadersMatchVars(route *routev3.Route) ([]*apisix.Var, bool) {
 	// See https://github.com/api7/lua-resty-expr
-	// for the vars syntax.
+	// for field `vars` syntax.
 	var vars []*apisix.Var
 	for _, header := range route.GetMatch().GetHeaders() {
 		var (
@@ -337,26 +334,4 @@ func (adaptor *adaptor) translateRouteAction(r *routev3.Route) (*apisix.Plugins,
 			},
 		},
 	}, nil
-}
-
-// translateRouteMatch translates envoy RouteMatch to APISIX match configs
-// Istio reference:
-// http://github.com/istio/istio/blob/2dd7b6207f02cec8b42f4263ac197434f4ec9b4a/pilot/pkg/networking/core/v1alpha3/route/route.go#L617
-func translateRouteMatch() {
-
-}
-
-// translateHeaderMatchers translates envoy header match rules
-// Header matchers contains: header, without header, method, authority, scheme
-func translateHeaderMatchers(matchers []*routev3.HeaderMatcher) {
-
-}
-
-func translatePathSpecifier() {
-
-}
-
-// translateQueryParameters translates envoy query parameter match rules
-func translateQueryParameters() {
-
 }
