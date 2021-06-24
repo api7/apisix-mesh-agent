@@ -344,6 +344,238 @@ func TestPatchRoutesWithOriginalDestination(t *testing.T) {
 	})
 }
 
+func TestTranslateWeightedVirtualHost(t *testing.T) {
+	a := &adaptor{logger: log.DefaultLogger}
+
+	// Istio resource
+	_ = `apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: httpbin-destination
+spec:
+  host: httpbin.test.svc.cluster.local
+  subsets:
+  - name: v1
+    labels:
+      ver: v1
+  - name: v2
+    labels:
+      ver: v2
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: httpbin-route
+spec:
+  hosts:
+  - httpbin.test.svc.cluster.local
+  http:
+  - name: route-ip
+    match:
+    - uri:
+        prefix: "/ip"
+    route:
+    - destination:
+        host: httpbin.test.svc.cluster.local
+        subset: v1
+      weight: 80
+    - destination:
+        host: httpbin.test.svc.cluster.local
+        subset: v2
+      weight: 20
+  - name: route-get
+    match:
+    - headers:
+        username:
+          exact: testuser
+      uri:
+        exact: "/get"
+    route:
+    - destination:
+        host: httpbin.test.svc.cluster.local
+        subset: v1
+      weight: 20
+    - destination:
+        host: httpbin.test.svc.cluster.local
+        subset: v2
+      weight: 80
+  - name: route-default
+    route:
+    - destination:
+        host: httpbin.test.svc.cluster.local
+        subset: v1
+`
+
+	v1Host := "outbound|80|v1|httpbin.test.svc.cluster.local"
+	v1HostId := id.GenID(v1Host)
+	v2Host := "outbound|80|v2|httpbin.test.svc.cluster.local"
+	v2HostId := id.GenID(v2Host)
+
+	vhost := &routev3.VirtualHost{
+		Name: "httpbin.test.svc.cluster.local:80",
+		Domains: []string{
+			"httpbin.test.svc.cluster.local",
+			"httpbin.test.svc.cluster.local:80",
+			"httpbin",
+			"httpbin:80",
+			"httpbin.test.svc.cluster",
+			"httpbin.test.svc.cluster:80",
+			"httpbin.test.svc",
+			"httpbin.test.svc:80",
+			"httpbin.test",
+			"httpbin.test:80",
+		},
+		Routes: []*routev3.Route{
+			{
+				Name: "route-ip",
+				Match: &routev3.RouteMatch{
+					CaseSensitive: &wrappers.BoolValue{
+						Value: true,
+					},
+					PathSpecifier: &routev3.RouteMatch_Prefix{
+						Prefix: "/ip",
+					},
+				},
+				Action: &routev3.Route_Route{
+					Route: &routev3.RouteAction{
+						ClusterSpecifier: &routev3.RouteAction_WeightedClusters{
+							WeightedClusters: &routev3.WeightedCluster{
+								Clusters: []*routev3.WeightedCluster_ClusterWeight{
+									{
+										Name:   v1Host,
+										Weight: &wrappers.UInt32Value{Value: 80},
+									},
+									{
+										Name:   v2Host,
+										Weight: &wrappers.UInt32Value{Value: 20},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				Name: "route-get",
+				Match: &routev3.RouteMatch{
+					Headers: []*routev3.HeaderMatcher{
+						{
+							Name: "username",
+							HeaderMatchSpecifier: &routev3.HeaderMatcher_ExactMatch{
+								ExactMatch: "testuser",
+							},
+						},
+					},
+					CaseSensitive: &wrappers.BoolValue{
+						Value: true,
+					},
+					PathSpecifier: &routev3.RouteMatch_Path{
+						Path: "/get",
+					},
+				},
+				Action: &routev3.Route_Route{
+					Route: &routev3.RouteAction{
+						ClusterSpecifier: &routev3.RouteAction_WeightedClusters{
+							WeightedClusters: &routev3.WeightedCluster{
+								Clusters: []*routev3.WeightedCluster_ClusterWeight{
+									{
+										Name:   v1Host,
+										Weight: &wrappers.UInt32Value{Value: 20},
+									},
+									{
+										Name:   v2Host,
+										Weight: &wrappers.UInt32Value{Value: 80},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				Name: "route-default",
+				Match: &routev3.RouteMatch{
+					CaseSensitive: &wrappers.BoolValue{
+						Value: true,
+					},
+					PathSpecifier: &routev3.RouteMatch_Path{
+						Path: "/",
+					},
+				},
+				Action: &routev3.Route_Route{
+					Route: &routev3.RouteAction{
+						ClusterSpecifier: &routev3.RouteAction_Cluster{
+							Cluster: v1Host,
+						},
+					},
+				},
+			},
+		},
+	}
+	routes, err := a.translateVirtualHost("test", vhost, nil)
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(routes))
+
+	// route-ip
+	first := routes[0]
+	assert.Equal(t, "route-ip#httpbin.test:80#test", first.Name)
+	assert.Equal(t, apisix.Route_Enable, first.Status)
+	assert.Equal(t, id.GenID(first.Name), first.Id)
+
+	sort.Strings(first.Hosts)
+	assert.Equal(t, []string{
+		"httpbin", "httpbin.test", "httpbin.test.svc", "httpbin.test.svc.cluster", "httpbin.test.svc.cluster.local",
+	}, first.Hosts)
+	assert.Equal(t, []string{
+		"/ip*",
+	}, first.Uris)
+	assert.Equal(t, v2HostId, first.UpstreamId)
+	assert.Equal(t, 0, len(first.Vars))
+
+	assert.NotNil(t, first.Plugins.TrafficSplit)
+	assert.Equal(t, 1, len(first.Plugins.TrafficSplit.Rules))
+	assert.Equal(t, 0, len(first.Plugins.TrafficSplit.Rules[0].Match))
+	assert.Equal(t, 2, len(first.Plugins.TrafficSplit.Rules[0].WeightedUpstreams))
+	// first weighted upstream
+	assert.Equal(t, uint32(80), first.Plugins.TrafficSplit.Rules[0].WeightedUpstreams[0].Weight)
+	assert.Equal(t, v1HostId, first.Plugins.TrafficSplit.Rules[0].WeightedUpstreams[0].UpstreamId)
+	// default weighted upstream
+	assert.Equal(t, uint32(20), first.Plugins.TrafficSplit.Rules[0].WeightedUpstreams[1].Weight)
+	assert.Equal(t, 0, len(first.Plugins.TrafficSplit.Rules[0].WeightedUpstreams[1].UpstreamId))
+
+	// route-get
+	second := routes[1]
+	assert.Equal(t, "route-get#httpbin.test:80#test", second.Name)
+	assert.Equal(t, apisix.Route_Enable, second.Status)
+	assert.Equal(t, id.GenID(second.Name), second.Id)
+
+	sort.Strings(second.Hosts)
+	assert.Equal(t, []string{
+		"httpbin", "httpbin.test", "httpbin.test.svc", "httpbin.test.svc.cluster", "httpbin.test.svc.cluster.local",
+	}, second.Hosts)
+	assert.Equal(t, []string{
+		"/get",
+	}, second.Uris)
+	assert.Equal(t, v2HostId, second.UpstreamId)
+	assert.Equal(t, 1, len(second.Vars))
+	assert.Equal(t, []*apisix.Var{
+		{
+			Vars: []string{"http_username", "~~", "^testuser$"},
+		},
+	}, second.Vars)
+
+	assert.NotNil(t, second.Plugins.TrafficSplit)
+	assert.Equal(t, 1, len(second.Plugins.TrafficSplit.Rules))
+	assert.Equal(t, 0, len(second.Plugins.TrafficSplit.Rules[0].Match))
+
+	assert.Equal(t, 2, len(second.Plugins.TrafficSplit.Rules[0].WeightedUpstreams))
+	// weighted upstreams
+	assert.Equal(t, uint32(20), second.Plugins.TrafficSplit.Rules[0].WeightedUpstreams[0].Weight)
+	assert.Equal(t, v1HostId, second.Plugins.TrafficSplit.Rules[0].WeightedUpstreams[0].UpstreamId)
+	assert.Equal(t, uint32(80), second.Plugins.TrafficSplit.Rules[0].WeightedUpstreams[1].Weight)
+	assert.Equal(t, 0, len(second.Plugins.TrafficSplit.Rules[0].WeightedUpstreams[1].UpstreamId))
+}
+
 func TestUnstableHostsRouteDiff(t *testing.T) {
 	a := &adaptor{logger: log.DefaultLogger}
 	vhost1 := &routev3.VirtualHost{

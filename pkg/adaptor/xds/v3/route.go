@@ -113,10 +113,24 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 			Hosts:      hosts,
 			Uris:       []string{uri},
 			UpstreamId: id.GenID(cluster),
-			Vars:       vars,
 		}
+		if len(vars) > 0 {
+			r.Vars = vars
+		}
+
+		plugin, err := adaptor.translateRouteAction(route)
+		if err != nil {
+			return nil, err
+		}
+		if plugin != nil {
+			r.Plugins = plugin
+		}
+
 		routes = append(routes, r)
 	}
+	adaptor.logger.Debugw("translated apisix routes",
+		zap.Any("routes", routes),
+	)
 	return routes, nil
 }
 
@@ -128,23 +142,28 @@ func (adaptor *adaptor) getClusterName(route *routev3.Route) (string, bool) {
 		)
 		return "", true
 	}
-	cluster, ok := action.Route.GetClusterSpecifier().(*routev3.RouteAction_Cluster)
-	if !ok {
+	switch action.Route.GetClusterSpecifier().(type) {
+	case *routev3.RouteAction_Cluster:
+		return action.Route.GetClusterSpecifier().(*routev3.RouteAction_Cluster).Cluster, false
+	case *routev3.RouteAction_WeightedClusters:
+		clusters := action.Route.GetClusterSpecifier().(*routev3.RouteAction_WeightedClusters).WeightedClusters.Clusters
+		// pick last cluster as default upstream
+		return clusters[len(clusters)-1].Name, false
+	default:
 		adaptor.logger.Warnw("ignore route with unexpected cluster specifier",
 			zap.Any("route", route),
 		)
 		return "", true
 	}
-	return cluster.Cluster, false
 }
 
 func (adaptor *adaptor) getURL(route *routev3.Route) (string, bool) {
 	var uri string
-	switch route.GetMatch().GetPathSpecifier().(type) {
+	switch pathSpecifier := route.GetMatch().GetPathSpecifier().(type) {
 	case *routev3.RouteMatch_Path:
-		uri = route.GetMatch().GetPathSpecifier().(*routev3.RouteMatch_Path).Path
+		uri = pathSpecifier.Path
 	case *routev3.RouteMatch_Prefix:
-		uri = route.GetMatch().GetPathSpecifier().(*routev3.RouteMatch_Prefix).Prefix + "*"
+		uri = pathSpecifier.Prefix + "*"
 	default:
 		adaptor.logger.Warnw("ignore route with unexpected path specifier",
 			zap.Any("route", route),
@@ -172,6 +191,8 @@ func (adaptor *adaptor) getParametersMatchVars(route *routev3.Route) ([]*apisix.
 				op = "~*"
 			}
 			expr.Vars = []string{name, op, value}
+		default:
+			continue
 		}
 		vars = append(vars, &expr)
 	}
@@ -180,7 +201,7 @@ func (adaptor *adaptor) getParametersMatchVars(route *routev3.Route) ([]*apisix.
 
 func (adaptor *adaptor) getHeadersMatchVars(route *routev3.Route) ([]*apisix.Var, bool) {
 	// See https://github.com/api7/lua-resty-expr
-	// for the translation details.
+	// for field `vars` syntax.
 	var vars []*apisix.Var
 	for _, header := range route.GetMatch().GetHeaders() {
 		var (
@@ -188,10 +209,11 @@ func (adaptor *adaptor) getHeadersMatchVars(route *routev3.Route) ([]*apisix.Var
 			name  string
 			value string
 		)
+		// todo `:scheme`
 		switch header.GetName() {
-		case ":method":
+		case ":method": // Istio HeaderMethod
 			name = "request_method"
-		case ":authority":
+		case ":authority": // Istio HeaderAuthority
 			name = "http_host"
 		default:
 			name = strings.ToLower(header.Name)
@@ -262,4 +284,51 @@ func patchRoutesWithOriginalDestination(routes []*apisix.Route, origDst string) 
 			})
 		}
 	}
+}
+
+// translateRouteAction translates envoy RouteAction to traffic-split plugins configs
+func (adaptor *adaptor) translateRouteAction(r *routev3.Route) (*apisix.Plugins, error) {
+	switch r.GetAction().(type) {
+	case *routev3.Route_Route:
+	default:
+		adaptor.logger.Infow("ignore unsupported route action",
+			zap.Any("action", r.GetAction()),
+		)
+		return nil, nil
+	}
+	action := r.GetAction().(*routev3.Route_Route).Route
+	switch action.GetClusterSpecifier().(type) {
+	case *routev3.RouteAction_WeightedClusters:
+	default:
+		adaptor.logger.Debugw("ignore single cluster",
+			zap.Any("cluster_specifier", action.GetClusterSpecifier()),
+		)
+		return nil, nil
+	}
+	clusters := action.GetClusterSpecifier().(*routev3.RouteAction_WeightedClusters).WeightedClusters.Clusters
+
+	weighted := make([]*apisix.TrafficSplitWeightedUpstreams, len(clusters))
+	for i, weightedCluster := range clusters {
+		adaptor.logger.Debugw("translating weighted cluster",
+			zap.Any("cluster", weightedCluster),
+			zap.Any("index", i),
+		)
+		weighted[i] = &apisix.TrafficSplitWeightedUpstreams{
+			Weight: weightedCluster.Weight.Value,
+		}
+		if i != len(clusters)-1 {
+			// last one is default upstream
+			weighted[i].UpstreamId = id.GenID(weightedCluster.Name)
+		}
+	}
+
+	return &apisix.Plugins{
+		TrafficSplit: &apisix.TrafficSplit{
+			Rules: []*apisix.TrafficSplitRule{
+				{
+					WeightedUpstreams: weighted,
+				},
+			},
+		},
+	}, nil
 }

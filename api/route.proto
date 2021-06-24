@@ -58,15 +58,15 @@ message Route {
     ignore_empty: true,
     min_items: 1
     // TODO: IPv4 or IPv6 format pattern.
-  }];
+  }, json_name="remote_addrs"];
   // Nginx vars used to do the route match.
   repeated Var vars = 9;
   // Embedded plugins.
   Plugins plugins = 10;
   // The referred service id.
-  string service_id = 11;
+  string service_id = 11 [json_name="service_id"];
   // The referred upstream id.
-  string upstream_id = 12;
+  string upstream_id = 12 [json_name="upstream_id"];
 
   // RouteStatus Enumerations.
   enum RouteStatus {

@@ -15,6 +15,7 @@ func (e *etcdV3) checkRangeRequestConformance(r *etcdserverpb.RangeRequest) erro
 	key := string(r.Key)
 	randEnd := string(r.RangeEnd)
 	if !(r.RangeEnd == nil ||
+		// to scan all keys with certain prefix, official go client and resty.etcd use key+1 as range end
 		(key == e.keyPrefix+"/routes" && randEnd == e.keyPrefix+"/routet") ||
 		(key == e.keyPrefix+"/upstreams" && randEnd == e.keyPrefix+"/upstreamt")) {
 

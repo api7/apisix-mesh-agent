@@ -32,7 +32,7 @@ message Upstream {
     in: [
       "vars", "header", "cookie", "consumer", "vars_combination"
     ]
-  }];
+  }, json_name="hash_on"];
   // The hash key, this field is only in effective
   // if type is "chash".
   string key = 5;
@@ -51,7 +51,7 @@ message Upstream {
     ]
   }];
   // The HTTP Host header to use when sending requests to this upstream.
-  string upstream_host = 9 [(validate.rules).string.pattern = "^\\*?[0-9a-zA-Z-._]+$"];
+  string upstream_host = 9 [(validate.rules).string.pattern = "^\\*?[0-9a-zA-Z-._]+$", json_name="upstream_host"];
   // The upstream name, it's useful for the logging but it's not required.
   string name = 10 [(validate.rules).string = {min_len: 1, max_len: 100}];
   // Textual descriptions used to describe the upstream use.
@@ -88,9 +88,9 @@ message ActiveHealthCheck {
   // Specified port for the probe to sent.
   int32 port = 5 [(validate.rules).int32 = {gte: 1, lte: 65535}];
   // the URI path for HTTP probes.
-  string http_path = 6 [(validate.rules).string.ignore_empty = true];
+  string http_path = 6 [(validate.rules).string.ignore_empty = true, json_name="http_path"];
   // Whether to verify the TLS/SSL certificate.
-  bool https_verify_certificate = 7;
+  bool https_verify_certificate = 7 [json_name="https_verify_certificate"];
   // health check for judging nodes become healthy.
   ActiveHealthCheckHealthy healthy = 8;
   // health check for judging nodes become unhealthy.
@@ -100,7 +100,7 @@ message ActiveHealthCheck {
     unique: true,
     min_items: 1,
     ignore_empty: true
-  }];
+  }, json_name="req_headers"];
 }
 
 // [#protodoc-title: Passive Health Check configuration]
@@ -126,7 +126,8 @@ message ActiveHealthCheckHealthy {
       min_items: 1,
       ignore_empty: true,
     },
-    (validate.rules).repeated.items.int32 = {gte: 200, lte: 599}
+    (validate.rules).repeated.items.int32 = {gte: 200, lte: 599},
+    json_name="http_statuses"
   ];
   // How many consecutive success times should meet before a node is set to healthy.
   int32 successes = 3 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
@@ -143,12 +144,13 @@ message ActiveHealthCheckUnhealthy {
       min_items: 1,
       ignore_empty: true,
     },
-    (validate.rules).repeated.items.int32 = {gte: 200, lte: 599}
+    (validate.rules).repeated.items.int32 = {gte: 200, lte: 599},
+    json_name="http_statuses"
   ];
   // How many consecutive failures (http) occur should meet before a node is set to healthy.
-  int32 http_failures = 3 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
+  int32 http_failures = 3 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true},json_name="http_failures"];
   // How many consecutive failures (tcp) occur should meet before a node is set to healthy.
-  int32 tcp_failures = 4 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
+  int32 tcp_failures = 4 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true},json_name="tcp_failures"];
   // How many consecutive timeouts occur should meet before a node is set to healthy.
   int32 timeouts = 5 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
 }
@@ -162,7 +164,8 @@ message PassiveHealthCheckHealthy {
       min_items: 1,
       ignore_empty: true,
     },
-    (validate.rules).repeated.items.int32 = {gte: 200, lte: 599}
+    (validate.rules).repeated.items.int32 = {gte: 200, lte: 599},
+    json_name="http_statuses"
   ];
   // How many consecutive success times should meet before a node is set to healthy.
   int32 successes = 2 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
@@ -177,12 +180,13 @@ message PassiveHealthCheckUnhealthy {
       min_items: 1,
       ignore_empty: true,
     },
-    (validate.rules).repeated.items.int32 = {gte: 200, lte: 599}
+    (validate.rules).repeated.items.int32 = {gte: 200, lte: 599},
+    json_name="http_statuses"
   ];
   // How many consecutive failures (http) occur should meet before a node is set to healthy.
-  int32 http_failures = 2 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
+  int32 http_failures = 2 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true},json_name="http_failures"];
   // How many consecutive failures (tcp) occur should meet before a node is set to healthy.
-  int32 tcp_failures = 3 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
+  int32 tcp_failures = 3 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true},json_name="tcp_failures"];
   // How many consecutive timeouts occur should meet before a node is set to healthy.
   int32 timeouts = 4 [(validate.rules).int32 = {gte: 1, lte: 254, ignore_empty: true}];
 }

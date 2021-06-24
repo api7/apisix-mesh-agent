@@ -27,3 +27,4 @@ etcd:
 plugins:
   - cors
   - request-id
+  - traffic-split
