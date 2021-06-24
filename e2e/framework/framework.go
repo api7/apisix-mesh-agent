@@ -15,6 +15,7 @@ import (
 	"github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/api7/apisix-mesh-agent/e2e/framework/constant"
 	"github.com/api7/apisix-mesh-agent/e2e/framework/controlplane"
 )
 
@@ -39,8 +40,9 @@ type Framework struct {
 type Options struct {
 	Kubeconfig string
 	// Control Plane type
-	ControlPlane      string
-	ControlPlaneImage string
+	ControlPlane                   string
+	ControlPlaneImage              string
+	ControlPlaneDiscoveryExtraArgs []string
 	// The Helm Charts path to install the Control Plane.
 	ControlPlaneChartsPath []string
 }
@@ -51,15 +53,33 @@ func init() {
 
 // NewDefaultFramework creates the framework with default options
 func NewDefaultFramework() (*Framework, error) {
-	e2eHome := os.Getenv("APISIX_MESH_AGENT_E2E_HOME")
 	opts := &Options{
 		Kubeconfig:        GetKubeconfig(),
 		ControlPlane:      "istio",
 		ControlPlaneImage: "localhost:5000/istio/pilot:1.9.1",
 
+		ControlPlaneDiscoveryExtraArgs: []string{},
 		ControlPlaneChartsPath: []string{
-			filepath.Join(e2eHome, "charts/istio/base"),
-			filepath.Join(e2eHome, "charts/istio/istio-discovery"),
+			filepath.Join(constant.E2eHome, "charts/istio/base"),
+			filepath.Join(constant.E2eHome, "charts/istio/istio-discovery"),
+		},
+	}
+	return NewFramework(opts)
+}
+
+// NewNacosFramework creates the framework with nacos provisioner
+func NewNacosFramework() (*Framework, error) {
+	opts := &Options{
+		Kubeconfig:        GetKubeconfig(),
+		ControlPlane:      "istio",
+		ControlPlaneImage: "localhost:5000/istio/pilot:1.9.1",
+
+		ControlPlaneDiscoveryExtraArgs: []string{
+			"--set-file", "files/injection-template.yaml=" + filepath.Join(constant.E2eHome, "charts/istio/istio-discovery-nacos/files/injection-template.yaml"),
+		},
+		ControlPlaneChartsPath: []string{
+			filepath.Join(constant.E2eHome, "charts/istio/base"),
+			filepath.Join(constant.E2eHome, "charts/istio/istio-discovery"),
 		},
 	}
 	return NewFramework(opts)
@@ -67,8 +87,8 @@ func NewDefaultFramework() (*Framework, error) {
 
 // NewFramework creates the framework with the given options.
 func NewFramework(opts *Options) (*Framework, error) {
-	ns := randomizeNamespace()
-	cpNamespace := randomizeCPNamespace()
+	ns := randomNamespace()
+	cpNamespace := randomCPNamespace()
 	fw := &Framework{
 		cpNamespace: cpNamespace,
 		namespace:   ns,
@@ -88,11 +108,12 @@ func NewFramework(opts *Options) (*Framework, error) {
 	switch opts.ControlPlane {
 	case "istio":
 		istioOpts := &controlplane.IstioOptions{
-			KubectlOpts: fw.kubectlOpts,
-			IstioImage:  opts.ControlPlaneImage,
-			Kubeconfig:  opts.Kubeconfig,
-			Namespace:   fw.cpNamespace,
-			ChartsPath:  opts.ControlPlaneChartsPath,
+			KubectlOpts:        fw.kubectlOpts,
+			IstioImage:         opts.ControlPlaneImage,
+			Kubeconfig:         opts.Kubeconfig,
+			Namespace:          fw.cpNamespace,
+			DiscoveryExtraArgs: opts.ControlPlaneDiscoveryExtraArgs,
+			ChartsPath:         opts.ControlPlaneChartsPath,
 		}
 		cp, err := controlplane.NewIstioControlPlane(istioOpts)
 		if err != nil {
@@ -181,10 +202,10 @@ func waitExponentialBackoff(condFunc func() (bool, error)) error {
 	return wait.ExponentialBackoff(backoff, condFunc)
 }
 
-func randomizeNamespace() string {
+func randomNamespace() string {
 	return fmt.Sprintf("apisix-mesh-agent-e2e-%d", time.Now().Nanosecond())
 }
 
-func randomizeCPNamespace() string {
+func randomCPNamespace() string {
 	return fmt.Sprintf("apisix-mesh-agent-cp-e2e-%d", time.Now().Nanosecond())
 }

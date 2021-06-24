@@ -39,6 +39,8 @@ func TestConfigValidate(t *testing.T) {
 
 	cfg.Provisioner = "xds-v3-grpc"
 	assert.Equal(t, cfg.Validate(), ErrEmptyXDSConfigSource)
+	cfg.Provisioner = "nacos"
+	assert.Equal(t, cfg.Validate(), ErrEmptyNacosSource)
 }
 
 func TestGetRunningContext(t *testing.T) {

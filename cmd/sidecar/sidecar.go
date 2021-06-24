@@ -84,6 +84,7 @@ func NewCommand() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&cfg.GRPCListen, "grpc-listen", config.DefaultGRPCListen, "grpc server listen address")
 	cmd.PersistentFlags().StringVar(&cfg.EtcdKeyPrefix, "etcd-key-prefix", config.DefaultEtcdKeyPrefix, "the key prefix in the mimicking etcd v3 server")
 	cmd.PersistentFlags().StringVar(&cfg.XDSConfigSource, "xds-config-source", "", "the xds config source address, required if provisioner is \"xds-v3-grpc\"")
+	cmd.PersistentFlags().StringVar(&cfg.NacosSource, "nacos-source", "", "the nacos api address, required if provisioner is \"nacos\"")
 	cmd.PersistentFlags().StringVar(&cfg.RunMode, "run-mode", config.StandaloneMode, "run mode for apisix-mesh-agent, can be \"standalone\" or \"bundle\"")
 	cmd.PersistentFlags().StringVar(&cfg.APISIXBinPath, "apisix-bin-path", config.DefaultAPISIXBinPath, "executable binary file path for Apache APISIX, it's not concerned if run mode is \"standalone\"")
 	cmd.PersistentFlags().StringVar(&cfg.APISIXHomePath, "apisix-home-path", config.DefaultAPISIXHomePath, "home path for Apache APISIX, it's not concerned if run mode is \"standalone\"")

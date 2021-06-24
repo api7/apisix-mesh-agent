@@ -48,7 +48,7 @@ Since this solution is exclusive for Apache APISIX, addressable key formats are 
 Although apisix-mesh-agent mimics the ETCD v3 API, it doesn't inherit the persistence of ETCD.
 
 Data come from the in memory cache inside apisix-mesh-agent, For `RangeRequest`, just iterating
-the cache and output them; For `WatchRequest`, each time new events arrived from [Privisioner](./the-internal-of-apisix-mesh-agent.md#Provisioner), it also
+the cache and output them; For `WatchRequest`, each time new events arrived from [Provisioner](./the-internal-of-apisix-mesh-agent.md#Provisioner), it also
 deliveries them to the watch clients.
 
 ## Key Value Metadata

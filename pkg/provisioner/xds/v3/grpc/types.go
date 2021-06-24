@@ -31,6 +31,7 @@ import (
 var (
 	_errUnknownResourceTypeUrl = errors.New("unknown resource type url")
 	_errUnknownClusterName     = errors.New("unknown cluster name")
+	_errBadXDSGRPCSchema       = errors.New("bad xds config source, missing protocol prefix \"grpc://\"")
 )
 
 // Note this provisioner is based on the xDS State of The World
@@ -67,7 +68,7 @@ type grpcProvisioner struct {
 // NewXDSProvisioner creates a provisioner which fetches config over gRPC.
 func NewXDSProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
 	if !strings.HasPrefix(cfg.XDSConfigSource, "grpc://") {
-		return nil, errors.New("bad xds config source")
+		return nil, _errBadXDSGRPCSchema
 	}
 	cs := strings.TrimPrefix(cfg.XDSConfigSource, "grpc://")
 	logger, err := log.NewLogger(

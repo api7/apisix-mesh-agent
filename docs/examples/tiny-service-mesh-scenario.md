@@ -1,4 +1,4 @@
-Tiny Mesh Scanario
+Tiny Mesh Scenario
 ===================
 
 This post builds a tiny service mesh and tests it.
@@ -44,7 +44,7 @@ This post builds a tiny service mesh and tests it.
 
 HTTP Requests will be sent to the nginx pod and redirected to httpbin, both nginx and httpbin pods have the apisix-mesh-agent sidecar, and requests will be intercepted by it.
 
-Prequisites
+Prerequisites
 -----------
 
 First you should install APISIX Mesh as per the [guide](../istio-mesh.md).

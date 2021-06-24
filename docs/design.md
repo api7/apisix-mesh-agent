@@ -11,19 +11,19 @@ This article explains how to implement yet another [Service Mesh](https://www.re
 - [Service Mesh](#service-mesh)
 - [Apache APISIX](#apache-apisix)
 - [Sidecar in APISIX Mesh](#sidecar-in-apisix-mesh)
-- [Communcation Bus Protocol](#communcation-bus-protocol)
+- [Communication Bus Protocol](#communcation-bus-protocol)
 - [The Selection of Control Plane](#the-selection-of-control-plane)
 
 ## Service Mesh
 
 Service Mesh, is a technology to control how individual application talks with each other, applications get released from it since all essential functions like
-routing, service discovery, authenication, authorizatoin and etc are implemented in the Service Mesh solutions,
+routing, service discovery, authentication, authorization, etc are implemented in the Service Mesh solutions,
 just like what [Istio](https://istio.io/) and [Linkerd](https://linkerd.io/) does.
 
 Typically, there're two components in a Service Mesh solution, the control plane and data plane.
 The former, as the brain of Service Mesh, discovering services from the service registry ([Kubernetes](https://kubernetes.io),
 [Consul](https://www.consul.io/) and others), accepting configuration change requests from admin or CI/CD robots and
-delivering all configurations to the data plane; The data plane, usually composed by an sidecar process and an application process,
+delivering all configurations to the data plane; The data plane, usually composed by a sidecar process and an application process,
 is deployed distributed.
 
 ## Apache APISIX
@@ -42,7 +42,7 @@ It has fantastic resources utilization, flexible routing capabilities, rich plug
 In the APISIX Mesh solution, Apache APISIX is designed as the proxy in the data plane, rather than the whole the sidecar component since Apache APISIX is coupled with [etcd v3 API](https://etcd.io/docs/v3.3.12/rfc/) tightly, while this protocol is not so common,
 for the sake of adjusting existing control plane solutions easily, it's not wise to use this protocol as the communication bus protocol between control plane and data plane.
 
-That's why another program (named as apisix-mesh-agent) comes in, it uses a well designed protocol to talk to the control plane, receiving configurations from it, minicking etcd v3 API for the concomitant Apache APISIX.
+That's why another program (named as apisix-mesh-agent) comes in, it uses a well-designed protocol to talk to the control plane, receiving configurations from it, mimicking etcd v3 API for the concomitant Apache APISIX.
 
 ![Data Plane Overview](./images/data-plane-overview.png)
 
@@ -50,19 +50,19 @@ Resort to this design, what Apache APISIX needs to change is only the value of `
 
 More importantly, apisix mesh agent will set up dozens of iptables rules, to intercept the inbound (pink arrow) and outbound (brown arrow) traffics of the application.
 
-Of course, the above all are not all functions that the apisix mesh agent provides, it also has other auxiliary features such as delivering TLS/SSL certificates, uploading logs, tracing data, metrics for better observability and etc. But for the first stage, only core funcionalities (routing, inbound, outbound traffic interceptions) will be focused on, other features will be added gradually.
+Of course, the above all are not all functions that the apisix mesh agent provides, it also has other auxiliary features such as delivering TLS/SSL certificates, uploading logs, tracing data, metrics for better observability, etc. But for the first stage, only core functionalities (routing, inbound, outbound traffic interceptions) will be focused on, other features will be added gradually.
 
-## Communcation Bus Protocol
+## Communication Bus Protocol
 
-As above mentioned, the etcd v3 API protocol is not a good choice to as the communcation protocol between the data plane and control plane, instead, a well designed, service mesh dedicated protocol is required, and the [Envoy xDS protocol](https://www.envoyproxy.io/docs/envoy/latest/api-docs/xds_protocol) is the best one (at least for now), not only because its rich data structures, underlying transport protocol, but also for its spread and adoption. With the help of xDS protocol, the selection of control plane is not force as long as it also supports the xDS protocol.
+As above mentioned, the etcd v3 API protocol is not a good choice to as the communication protocol between the data plane and control plane, instead, a well-designed, service mesh dedicated protocol is required, and the [Envoy xDS protocol](https://www.envoyproxy.io/docs/envoy/latest/api-docs/xds_protocol) is the best one (at least for now), not only because its rich data structures, underlying transport protocol, but also for its spread and adoption. With the help of xDS protocol, the selection of control plane is not force as long as it also supports the xDS protocol.
 
-Therefore, the apisix-mesh-agent should implement the xDS client side protocol, fortunately, not much effort needs to be take, there is an existing SDK [go-control-plane](https://github.com/envoyproxy/go-control-plane).
+Therefore, the apisix-mesh-agent should implement the xDS client side protocol, fortunately, not much effort needs to be taken, there is an existing SDK [go-control-plane](https://github.com/envoyproxy/go-control-plane).
 
 ## The Selection of Control Plane
 
 As the xDS protocol is used, the control plane selection is clear, any products once support xDS protocol can be used as the control plane of
 The APISIX Mesh, like Istio, Kuma. Use existing control plane products reduce the migration overheads since control planes are always incompatible with each other. It's difficult to ask users migrate from one control plane to another. Target of the first stage is the adoption of Apache APISIX as the data plane.
 
-The architecture is followed. In the future, Custom control plane will be supported, it'll be designed flexible, easy to use/deploy and high available.
+The architecture is followed. In the future, custom control plane will be supported, it'll be designed flexible, easy to use/deploy and high available.
 
 ![APISIX Mesh Overview](./images/apisix-mesh-overview.png)

@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo"
 
 	_ "github.com/api7/apisix-mesh-agent/e2e/suites"
+	_ "github.com/api7/apisix-mesh-agent/e2e/suites/nacos"
 )
 
 // TestE2ESuites is the entry of apisix-mesh-agent e2e suites.
