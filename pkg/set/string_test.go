@@ -18,3 +18,16 @@ func TestStringSet(t *testing.T) {
 	s2.Add("111")
 	assert.Equal(t, s.Equal(s2), false)
 }
+
+func TestStringSetToArray(t *testing.T) {
+	s := StringSet{}
+	s.Add("123")
+	s.Add("456")
+	s2 := StringSet{}
+	s2.Add("456")
+	s2.Add("123")
+
+	assert.NotNil(t, s.OrderedStrings())
+	assert.NotNil(t, s2.OrderedStrings())
+	assert.Equal(t, s.OrderedStrings(), s2.OrderedStrings())
+}

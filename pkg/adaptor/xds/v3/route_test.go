@@ -8,6 +8,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 
+	apisixutil "github.com/api7/apisix-mesh-agent/pkg/apisix"
 	"github.com/api7/apisix-mesh-agent/pkg/id"
 	"github.com/api7/apisix-mesh-agent/pkg/log"
 	"github.com/api7/apisix-mesh-agent/pkg/types/apisix"
@@ -341,4 +342,86 @@ func TestPatchRoutesWithOriginalDestination(t *testing.T) {
 			},
 		},
 	})
+}
+
+func TestUnstableHostsRouteDiff(t *testing.T) {
+	a := &adaptor{logger: log.DefaultLogger}
+	vhost1 := &routev3.VirtualHost{
+		Name: "test",
+		Domains: []string{
+			"a.apisix.apache.org",
+			"b.apisix.apache.org",
+			"c.apisix.apache.org",
+		},
+		Routes: []*routev3.Route{
+			{
+				Name: "route",
+				Action: &routev3.Route_Route{
+					Route: &routev3.RouteAction{
+						ClusterSpecifier: &routev3.RouteAction_Cluster{
+							Cluster: "kubernetes.default.svc.cluster.local",
+						},
+					},
+				},
+				Match: &routev3.RouteMatch{
+					Headers: []*routev3.HeaderMatcher{
+						{
+							Name: ":method",
+							HeaderMatchSpecifier: &routev3.HeaderMatcher_ContainsMatch{
+								ContainsMatch: "POST",
+							},
+						},
+					},
+					PathSpecifier: &routev3.RouteMatch_Path{
+						Path: "/foo/baz",
+					},
+				},
+			},
+		},
+	}
+	vhost2 := &routev3.VirtualHost{
+		Name: "test",
+		Domains: []string{
+			"c.apisix.apache.org",
+			"a.apisix.apache.org",
+			"b.apisix.apache.org",
+		},
+		Routes: []*routev3.Route{
+			{
+				Name: "route",
+				Action: &routev3.Route_Route{
+					Route: &routev3.RouteAction{
+						ClusterSpecifier: &routev3.RouteAction_Cluster{
+							Cluster: "kubernetes.default.svc.cluster.local",
+						},
+					},
+				},
+				Match: &routev3.RouteMatch{
+					Headers: []*routev3.HeaderMatcher{
+						{
+							Name: ":method",
+							HeaderMatchSpecifier: &routev3.HeaderMatcher_ContainsMatch{
+								ContainsMatch: "POST",
+							},
+						},
+					},
+					PathSpecifier: &routev3.RouteMatch_Path{
+						Path: "/foo/baz",
+					},
+				},
+			},
+		},
+	}
+	routes1, err := a.translateVirtualHost("test", vhost1, nil)
+	assert.Nil(t, err)
+	routes2, err := a.translateVirtualHost("test", vhost2, nil)
+	assert.Nil(t, err)
+
+	assert.NotNil(t, routes1)
+	assert.NotNil(t, routes2)
+
+	added, deleted, updated := apisixutil.CompareRoutes(routes1, routes2)
+	assert.Nil(t, added)
+	assert.Nil(t, deleted)
+	assert.Nil(t, updated)
 }
