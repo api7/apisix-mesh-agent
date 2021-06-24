@@ -71,6 +71,7 @@ kind-up:
 e2e-test: kind-up prepare-e2e-env
 	APISIX_MESH_AGENT_E2E_HOME=$(shell pwd)/e2e \
 		cd e2e && \
+		go env -w GOFLAGS="-mod=mod" && \
 		ginkgo -cover -coverprofile=coverage.txt -r --randomizeSuites --randomizeAllSpecs --trace -p --nodes=$(E2E_CONCURRENCY)
 
 ### prepare-e2e-env:      Prepare the environment for running e2e test suites
