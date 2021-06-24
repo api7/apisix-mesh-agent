@@ -518,7 +518,7 @@ spec:
 
 	// route-ip
 	first := routes[0]
-	assert.Equal(t, "route-ip#httpbin.test.svc.cluster.local:80#test", first.Name)
+	assert.Equal(t, "route-ip#httpbin.test:80#test", first.Name)
 	assert.Equal(t, apisix.Route_Enable, first.Status)
 	assert.Equal(t, id.GenID(first.Name), first.Id)
 
@@ -545,7 +545,7 @@ spec:
 
 	// route-get
 	second := routes[1]
-	assert.Equal(t, "route-get#httpbin.test.svc.cluster.local:80#test", second.Name)
+	assert.Equal(t, "route-get#httpbin.test:80#test", second.Name)
 	assert.Equal(t, apisix.Route_Enable, second.Status)
 	assert.Equal(t, id.GenID(second.Name), second.Id)
 
@@ -566,12 +566,7 @@ spec:
 
 	assert.NotNil(t, second.Plugins.TrafficSplit)
 	assert.Equal(t, 1, len(second.Plugins.TrafficSplit.Rules))
-	assert.Equal(t, 1, len(second.Plugins.TrafficSplit.Rules[0].Match))
-	assert.Equal(t, []*apisix.Var{
-		{
-			Vars: []string{"http_username", "~~", "^testuser$"},
-		},
-	}, second.Plugins.TrafficSplit.Rules[0].Match)
+	assert.Equal(t, 0, len(second.Plugins.TrafficSplit.Rules[0].Match))
 
 	assert.Equal(t, 2, len(second.Plugins.TrafficSplit.Rules[0].WeightedUpstreams))
 	// weighted upstreams
