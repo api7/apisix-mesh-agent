@@ -122,9 +122,6 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 			return nil, err
 		}
 		if plugin != nil {
-			if len(vars) > 0 && plugin.TrafficSplit != nil {
-				plugin.TrafficSplit.Rules[0].Match = vars
-			}
 			r.Plugins = plugin
 		}
 
