@@ -15,7 +15,7 @@ var (
 )
 
 func (s *Sidecar) reflectToCache(events []types.Event) {
-	for _, ev := range events {
+	for i, ev := range events {
 		var err error
 		switch ev.Type {
 		case types.EventAdd, types.EventUpdate:
@@ -62,6 +62,10 @@ func (s *Sidecar) reflectToCache(events []types.Event) {
 		for {
 			rev := atomic.LoadInt64(&s.revision)
 			if atomic.CompareAndSwapInt64(&s.revision, rev, rev+1) {
+				s.logger.Debugw("bump revision",
+					zap.Any("revision", rev+1),
+				)
+				events[i].Revision = rev
 				break
 			}
 		}

@@ -97,12 +97,18 @@ func (ws *watchStream) firstWatch(id int64, resource string, minRev int64) error
 	}
 	resp := &etcdserverpb.WatchResponse{
 		Header: &etcdserverpb.ResponseHeader{
-			Revision: ws.etcd.revisioner.Revision(),
+			Revision: ws.etcd.revisioner.Revision(), // 疑似这里。在 find All 之后
 		},
 		WatchId: id,
 		Created: true,
 		Events:  evs,
 	}
+	ws.etcd.logger.Debugw("first watch",
+		zap.Any("evs", evs),
+		zap.Int64("revision", resp.Header.Revision),
+		zap.Any("resource", resource),
+		zap.Any("watch_id", id),
+	)
 	if err := ws.stream.Send(resp); err != nil {
 		return err
 	}
@@ -239,6 +245,9 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 				)
 				return err
 			}
+			ws.etcd.logger.Debugw("sent WatchResponse",
+				zap.Any("watch_response", resp),
+			)
 		case <-ws.stream.Context().Done():
 			ws.etcd.logger.Debugw("client closed watch stream prematurely",
 				zap.Error(ws.stream.Context().Err()),
@@ -289,6 +298,12 @@ func (ws *watchStream) onWire() error {
 			} else {
 				id = uv.CreateRequest.WatchId
 			}
+			ws.etcd.logger.Debugw("got watch request (create)",
+				zap.Any("key", string(uv.CreateRequest.Key)),
+				zap.Any("revision", uv.CreateRequest.StartRevision),
+				zap.Any("resource", resource),
+				zap.Any("watch_id", id),
+			)
 			if err := ws.createWatch(id, resource); err != nil {
 				return err
 			}
@@ -305,23 +320,36 @@ func (ws *watchStream) onWire() error {
 					WatchId: id,
 					Created: true,
 				}
+				ws.etcd.logger.Debugw("skip first watch",
+					zap.Int64("revision", resp.Header.Revision),
+					zap.Any("resource", resource),
+					zap.Any("watch_id", id),
+				)
 				if err := ws.stream.Send(resp); err != nil {
 					return err
 				}
 			}
 
 		case *etcdserverpb.WatchRequest_CancelRequest:
+			ws.etcd.logger.Debugw("got cancel watch request",
+				zap.Any("body", req),
+			)
 			if uv.CancelRequest != nil {
 				if !ws.cancelWatch(uv.CancelRequest.WatchId) {
 					return fmt.Errorf("unknown watch id <%d>", uv.CancelRequest.WatchId)
 				}
-				err = ws.stream.Send(&etcdserverpb.WatchResponse{
+				resp := &etcdserverpb.WatchResponse{
 					Header: &etcdserverpb.ResponseHeader{
 						Revision: ws.etcd.revisioner.Revision(),
 					},
 					WatchId:  uv.CancelRequest.WatchId,
 					Canceled: true,
-				})
+				}
+				ws.etcd.logger.Debugw("skip first watch",
+					zap.Int64("revision", resp.Header.Revision),
+					zap.Any("watch_id", resp.WatchId),
+				)
+				err = ws.stream.Send(resp)
 				if err != nil {
 					return err
 				}

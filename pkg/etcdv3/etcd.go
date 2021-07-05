@@ -210,10 +210,9 @@ func (e *etcdV3) pushEvent(ev *types.Event) {
 	e.metaMu.RLock()
 	m, ok := e.metaCache[name]
 	e.metaMu.RUnlock()
-	rev := e.revisioner.Revision()
-	m.modRevision = rev
+	m.modRevision = ev.Revision
 	if !ok {
-		m.createRevision = rev
+		m.createRevision = ev.Revision
 	}
 	value, err := json.Marshal(obj)
 	if err != nil {
@@ -247,27 +246,41 @@ func (e *etcdV3) pushEvent(ev *types.Event) {
 		switch obj.(type) {
 		case *apisix.Route:
 			for id := range ws.route {
-				resps = append(resps, &etcdserverpb.WatchResponse{
+				resp := &etcdserverpb.WatchResponse{
 					Header: &etcdserverpb.ResponseHeader{
-						Revision: e.revisioner.Revision(),
+						Revision: ev.Revision,
 					},
 					WatchId: id,
 					Events: []*mvccpb.Event{
 						event,
 					},
-				})
+				}
+				resps = append(resps, resp)
+				ws.etcd.logger.Debugw("push to client",
+					zap.Any("revision", resp.Header.Revision),
+					zap.Any("resource", "route"),
+					zap.Any("watch_id", resp.WatchId),
+					zap.Any("events", event),
+				)
 			}
 		case *apisix.Upstream:
 			for id := range ws.upstream {
-				resps = append(resps, &etcdserverpb.WatchResponse{
+				resp := &etcdserverpb.WatchResponse{
 					Header: &etcdserverpb.ResponseHeader{
-						Revision: e.revisioner.Revision(),
+						Revision: ev.Revision,
 					},
 					WatchId: id,
 					Events: []*mvccpb.Event{
 						event,
 					},
-				})
+				}
+				resps = append(resps, resp)
+				ws.etcd.logger.Debugw("push to client",
+					zap.Any("revision", resp.Header.Revision),
+					zap.Any("resource", "upstream"),
+					zap.Any("watch_id", resp.WatchId),
+					zap.Any("events", event),
+				)
 			}
 		}
 		ws.mu.RUnlock()
