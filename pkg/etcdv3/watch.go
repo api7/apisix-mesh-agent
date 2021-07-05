@@ -97,7 +97,7 @@ func (ws *watchStream) firstWatch(id int64, resource string, minRev int64) error
 	}
 	resp := &etcdserverpb.WatchResponse{
 		Header: &etcdserverpb.ResponseHeader{
-			Revision: ws.etcd.revisioner.Revision(), // 疑似这里。在 find All 之后
+			Revision: ws.etcd.revisioner.Revision(),
 		},
 		WatchId: id,
 		Created: true,
