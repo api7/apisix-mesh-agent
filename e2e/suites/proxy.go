@@ -3,6 +3,7 @@ package suites
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
@@ -37,6 +38,7 @@ var _ = ginkgo.Describe("[basic proxy functions]", func() {
 		expect, err := f.NewHTTPClientToSpringboard()
 		g.Expect(err).ShouldNot(gomega.HaveOccurred())
 
+		time.Sleep(time.Second * 10)
 		resp := expect.GET("/ip").WithHeader("Host", fqdn).Expect()
 		// Hit the default route the cluster outbound|80||httpbin.<namespace>.svc.cluster.local
 		resp.Status(http.StatusOK)
