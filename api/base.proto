@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/apache/apisix";
+option go_package = ".;apisix";
 
 import "validate/validate.proto";
 
