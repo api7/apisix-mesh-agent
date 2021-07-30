@@ -206,7 +206,8 @@ FROM alpine:3.13
 RUN apk add --no-cache --virtual .builddeps \
     iptables \
     bash \
-    libstdc++
+    libstdc++ \
+    curl
 
 COPY --from=proxy-build-stage /usr/local/openresty /usr/local/openresty
 COPY --from=proxy-build-stage /usr/bin/apisix /usr/bin/apisix

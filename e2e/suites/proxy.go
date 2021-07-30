@@ -40,6 +40,10 @@ var _ = ginkgo.Describe("[basic proxy functions]", func() {
 
 		time.Sleep(time.Second * 10)
 		resp := expect.GET("/ip").WithHeader("Host", fqdn).Expect()
+		if resp.Raw().StatusCode != http.StatusOK {
+			ginkgo.GinkgoT().Log("status code is %v, please check logs", resp.Raw().StatusCode)
+			time.Sleep(time.Hour * 1000)
+		}
 		// Hit the default route the cluster outbound|80||httpbin.<namespace>.svc.cluster.local
 		resp.Status(http.StatusOK)
 		// The first Via header was added by nginx's sidecar;
