@@ -276,7 +276,7 @@ func (p *grpcProvisioner) translate(resp *discoveryv3.DiscoveryResponse) error {
 
 	case types.ClusterUrl:
 		newUps := make(map[string]*apisix.Upstream)
-		oldEdsRquiredClusters := p.edsRequiredClusters
+		oldEdsRequiredClusters := p.edsRequiredClusters
 		p.edsRequiredClusters = set.StringSet{}
 		for _, res := range resp.GetResources() {
 			ups, err := p.processClusterV3(res)
@@ -303,9 +303,9 @@ func (p *grpcProvisioner) translate(resp *discoveryv3.DiscoveryResponse) error {
 			o.Upstreams = append(o.Upstreams, ups)
 		}
 		p.upstreams = newUps
-		if !p.edsRequiredClusters.Equal(oldEdsRquiredClusters) {
+		if !p.edsRequiredClusters.Equal(oldEdsRequiredClusters) {
 			p.logger.Infow("(re)launch EDS discovery request",
-				zap.Any("old_eds_required_clusters", oldEdsRquiredClusters),
+				zap.Any("old_eds_required_clusters", oldEdsRequiredClusters),
 				zap.Any("eds_required_clusters", p.edsRequiredClusters),
 			)
 			p.sendEds()
@@ -396,12 +396,6 @@ func (p *grpcProvisioner) generateEvents(m, o *util.Manifest) []types.Event {
 	} else {
 		added, deleted, updated = o.DiffFrom(m)
 	}
-	p.logger.Debugw("found changes (after converting to APISIX resources)",
-		zap.Any("added", added),
-		zap.Any("deleted", deleted),
-		zap.Any("updated", updated),
-	)
-
 	if added != nil {
 		count += added.Size()
 	}
@@ -412,8 +406,16 @@ func (p *grpcProvisioner) generateEvents(m, o *util.Manifest) []types.Event {
 		count += updated.Size()
 	}
 	if count == 0 {
+		p.logger.Debugw("old and new manifests are exactly same")
 		return nil
 	}
+
+	p.logger.Debugw("found changes (after converting to APISIX resources)",
+		zap.Any("added", added),
+		zap.Any("updated", updated),
+		zap.Any("deleted", deleted),
+	)
+
 	events := make([]types.Event, 0, count)
 	if added != nil {
 		events = append(events, added.Events(types.EventAdd)...)

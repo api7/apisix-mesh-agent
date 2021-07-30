@@ -257,9 +257,9 @@ func (e *etcdV3) pushEvent(ev *types.Event) {
 				}
 				resps = append(resps, resp)
 				ws.etcd.logger.Debugw("push to client",
+					zap.Any("watch_id", resp.WatchId),
 					zap.Any("revision", resp.Header.Revision),
 					zap.Any("resource", "route"),
-					zap.Any("watch_id", resp.WatchId),
 					zap.Any("events", event),
 				)
 			}
@@ -276,19 +276,26 @@ func (e *etcdV3) pushEvent(ev *types.Event) {
 				}
 				resps = append(resps, resp)
 				ws.etcd.logger.Debugw("push to client",
+					zap.Any("watch_id", resp.WatchId),
 					zap.Any("revision", resp.Header.Revision),
 					zap.Any("resource", "upstream"),
-					zap.Any("watch_id", resp.WatchId),
 					zap.Any("events", event),
 				)
 			}
 		}
 		ws.mu.RUnlock()
+		// Must be non-blocking to release e.watcherMu, because once ws.ctx is done,
+		// e.watcherMu will be acquired to execute watchers cleanup
 		go func(ws *watchStream) {
 			for _, resp := range resps {
 				select {
 				case ws.eventCh <- resp:
 				case <-ws.ctx.Done():
+					ws.etcd.logger.Debugw("context done, etcd push aborted",
+						zap.Any("revision", resp.Header.Revision),
+						zap.Any("resp", resp),
+						zap.Any("watch_id", resp.WatchId),
+					)
 					// Must watch on the ctx.Done() or this goroutine might be leaky.
 					return
 				}

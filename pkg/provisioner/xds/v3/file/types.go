@@ -298,8 +298,8 @@ func (p *xdsFileProvisioner) generateEvents(filename string, rmo, rm *util.Manif
 	p.logger.Debugw("found changes (after converting to APISIX resources) in xds file",
 		zap.String("filename", filename),
 		zap.Any("added", added),
-		zap.Any("deleted", deleted),
 		zap.Any("updated", updated),
+		zap.Any("deleted", deleted),
 	)
 	p.state[filename] = rm
 

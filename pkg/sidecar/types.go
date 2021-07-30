@@ -156,9 +156,7 @@ func (s *Sidecar) reflectToLog(events []types.Event) {
 }
 
 func (s *Sidecar) reflectToEtcd(events []types.Event) {
-	go func(events []types.Event) {
-		s.etcdSrv.PushEvents(events)
-	}(events)
+	s.etcdSrv.PushEvents(events)
 }
 
 // Revision implements etcdv3.Revisioner.

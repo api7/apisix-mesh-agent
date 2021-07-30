@@ -220,6 +220,7 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 	)
 
 	defer func() {
+		close(ws.eventCh)
 		e.watcherMu.Lock()
 		delete(e.watchers, ws.id)
 		e.watcherMu.Unlock()
@@ -242,6 +243,7 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 			if err := ws.stream.Send(resp); err != nil {
 				ws.etcd.logger.Warnw("failed to send WatchResponse",
 					zap.Any("watch_response", resp),
+					zap.Error(err),
 				)
 				return err
 			}
@@ -251,6 +253,9 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 		case <-ws.stream.Context().Done():
 			ws.etcd.logger.Debugw("client closed watch stream prematurely",
 				zap.Error(ws.stream.Context().Err()),
+				zap.Int64("watcher_id", ws.id),
+				zap.Any("watching_routes", ws.route),
+				zap.Any("watching_upstreams", ws.upstream),
 			)
 			return nil
 		case werr := <-errCh:
