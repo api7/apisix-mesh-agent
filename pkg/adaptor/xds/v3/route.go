@@ -104,6 +104,7 @@ func (adaptor *adaptor) translateVirtualHost(prefix string, vhost *routev3.Virtu
 		}
 		vars = append(vars, queryVars...)
 		name = fmt.Sprintf("%s#%s#%s", name, vhost.GetName(), prefix)
+		name = strings.Replace(name, ".svc.cluster.local", "", -1) // avoid name too long
 		r := &apisix.Route{
 			Name:       name,
 			Priority:   int32(priority),

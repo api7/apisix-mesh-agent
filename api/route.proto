@@ -1,9 +1,8 @@
 syntax = "proto3";
 
-option go_package = "github.com/apache/apisix";
+option go_package = ".;apisix";
 
 import "base.proto";
-import "plugins.proto";
 import "validate/validate.proto";
 import "google/protobuf/any.proto";
 
@@ -62,7 +61,7 @@ message Route {
   // Nginx vars used to do the route match.
   repeated Var vars = 9;
   // Embedded plugins.
-  Plugins plugins = 10;
+  google.protobuf.Any plugins = 10;
   // The referred service id.
   string service_id = 11;
   // The referred upstream id.
