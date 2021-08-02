@@ -103,6 +103,12 @@ func (ws *watchStream) firstWatch(id int64, resource string, minRev int64) error
 		Created: true,
 		Events:  evs,
 	}
+	ws.etcd.logger.Debugw("first watch",
+		zap.Any("evs", evs),
+		zap.Int64("revision", resp.Header.Revision),
+		zap.Any("resource", resource),
+		zap.Any("watch_id", id),
+	)
 	if err := ws.stream.Send(resp); err != nil {
 		return err
 	}
@@ -214,6 +220,7 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 	)
 
 	defer func() {
+		close(ws.eventCh)
 		e.watcherMu.Lock()
 		delete(e.watchers, ws.id)
 		e.watcherMu.Unlock()
@@ -236,12 +243,19 @@ func (e *etcdV3) Watch(stream etcdserverpb.Watch_WatchServer) error {
 			if err := ws.stream.Send(resp); err != nil {
 				ws.etcd.logger.Warnw("failed to send WatchResponse",
 					zap.Any("watch_response", resp),
+					zap.Error(err),
 				)
 				return err
 			}
+			ws.etcd.logger.Debugw("sent WatchResponse",
+				zap.Any("watch_response", resp),
+			)
 		case <-ws.stream.Context().Done():
 			ws.etcd.logger.Debugw("client closed watch stream prematurely",
 				zap.Error(ws.stream.Context().Err()),
+				zap.Int64("watcher_id", ws.id),
+				zap.Any("watching_routes", ws.route),
+				zap.Any("watching_upstreams", ws.upstream),
 			)
 			return nil
 		case werr := <-errCh:
@@ -289,6 +303,12 @@ func (ws *watchStream) onWire() error {
 			} else {
 				id = uv.CreateRequest.WatchId
 			}
+			ws.etcd.logger.Debugw("got watch request (create)",
+				zap.Any("key", string(uv.CreateRequest.Key)),
+				zap.Any("revision", uv.CreateRequest.StartRevision),
+				zap.Any("resource", resource),
+				zap.Any("watch_id", id),
+			)
 			if err := ws.createWatch(id, resource); err != nil {
 				return err
 			}
@@ -305,23 +325,36 @@ func (ws *watchStream) onWire() error {
 					WatchId: id,
 					Created: true,
 				}
+				ws.etcd.logger.Debugw("skip first watch",
+					zap.Int64("revision", resp.Header.Revision),
+					zap.Any("resource", resource),
+					zap.Any("watch_id", id),
+				)
 				if err := ws.stream.Send(resp); err != nil {
 					return err
 				}
 			}
 
 		case *etcdserverpb.WatchRequest_CancelRequest:
+			ws.etcd.logger.Debugw("got cancel watch request",
+				zap.Any("body", req),
+			)
 			if uv.CancelRequest != nil {
 				if !ws.cancelWatch(uv.CancelRequest.WatchId) {
 					return fmt.Errorf("unknown watch id <%d>", uv.CancelRequest.WatchId)
 				}
-				err = ws.stream.Send(&etcdserverpb.WatchResponse{
+				resp := &etcdserverpb.WatchResponse{
 					Header: &etcdserverpb.ResponseHeader{
 						Revision: ws.etcd.revisioner.Revision(),
 					},
 					WatchId:  uv.CancelRequest.WatchId,
 					Canceled: true,
-				})
+				}
+				ws.etcd.logger.Debugw("skip first watch",
+					zap.Int64("revision", resp.Header.Revision),
+					zap.Any("watch_id", resp.WatchId),
+				)
+				err = ws.stream.Send(resp)
 				if err != nil {
 					return err
 				}

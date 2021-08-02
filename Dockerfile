@@ -153,7 +153,9 @@ RUN apk add --no-cache --virtual .build-deps \
 ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
 
 # Step 2, building LuaRocks
+# install wget because busybox wget has several proxy bugs
 RUN cd /tmp \
+    && apk add --no-cache wget \
     && wget https://github.com/luarocks/luarocks/archive/v${LUAROCKS_VERSION}.tar.gz \
     && tar xf v${LUAROCKS_VERSION}.tar.gz \
     && cd luarocks-${LUAROCKS_VERSION} \
@@ -186,16 +188,26 @@ FROM golang:alpine3.13 as agent-build-stage
 
 # Step 4, building apisix-mesh-agent
 LABEL apisix_mesh_agent_version="${APISIX_MESH_AGENT_VERSION}"
-COPY . /apisix-mesh-agent
-RUN apk add --no-cache --virtual .builddeps git make \
-    && cd /apisix-mesh-agent && GOPROXY=https://goproxy.cn,direct make build
+RUN apk add --no-cache --virtual .builddeps git make
+ENV GO111MODULE=on
+ENV GOPROXY=https://goproxy.cn,direct
+WORKDIR /apisix-mesh-agent
+COPY go.* ./
+RUN go mod download -x
+COPY Makefile .
+COPY main.go .
+COPY cmd cmd
+COPY pkg pkg
+RUN make build
+
 
 FROM alpine:3.13
 
 RUN apk add --no-cache --virtual .builddeps \
     iptables \
     bash \
-    libstdc++
+    libstdc++ \
+    curl
 
 COPY --from=proxy-build-stage /usr/local/openresty /usr/local/openresty
 COPY --from=proxy-build-stage /usr/bin/apisix /usr/bin/apisix

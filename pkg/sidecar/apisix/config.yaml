@@ -1,15 +1,22 @@
 apisix:
   node_listen: {{ .NodeListen }}
-  enable_admin: false
+  enable_admin: true
+  enable_admin_cors: true
+  enable_debug: true
+  port_admin: 9999
+  enable_dev_mode: true
+  allow_admin:
+    - 0.0.0.0/0
   ssl:
     enable: false
     listen_port: {{ .SSLPort }}
 nginx_config:                     # config for render the template to generate nginx.conf
+  error_log_level: "info"
   main_configuration_snippet: |
     daemon off;
   http_configuration_snippet: |
     server {
-          access_log off;
+          access_log on;
           listen 9081 reuseport;
           location / {
               proxy_http_version 1.1;

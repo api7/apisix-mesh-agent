@@ -3,11 +3,12 @@ package suites
 import (
 	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 
 	"github.com/api7/apisix-mesh-agent/e2e/framework"
-	"github.com/onsi/ginkgo"
 )
 
 var _ = ginkgo.Describe("[basic proxy functions]", func() {
@@ -37,7 +38,12 @@ var _ = ginkgo.Describe("[basic proxy functions]", func() {
 		expect, err := f.NewHTTPClientToSpringboard()
 		g.Expect(err).ShouldNot(gomega.HaveOccurred())
 
+		time.Sleep(time.Second * 10)
 		resp := expect.GET("/ip").WithHeader("Host", fqdn).Expect()
+		if resp.Raw().StatusCode != http.StatusOK {
+			ginkgo.GinkgoT().Log("status code is %v, please check logs", resp.Raw().StatusCode)
+			time.Sleep(time.Hour * 1000)
+		}
 		// Hit the default route the cluster outbound|80||httpbin.<namespace>.svc.cluster.local
 		resp.Status(http.StatusOK)
 		// The first Via header was added by nginx's sidecar;

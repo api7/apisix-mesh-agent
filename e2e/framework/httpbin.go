@@ -1,6 +1,7 @@
 package framework
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -15,6 +16,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: httpbin
+  labels:
+    app: httpbin
 spec:
   replicas: {{ .HttpBinReplicas }}
   selector:
@@ -71,6 +74,24 @@ func (f *Framework) waitUntilAllHttpBinPodsReady() error {
 		}
 		if len(items) == 0 {
 			ginkgo.GinkgoT().Log("no httpbin pods created")
+			clientset, err := k8s.GetKubernetesClientFromOptionsE(ginkgo.GinkgoT(), f.kubectlOpts)
+			if err != nil {
+				return false, err
+			}
+
+			deployments, err := clientset.AppsV1().Deployments(f.kubectlOpts.Namespace).List(context.Background(), opts)
+			if err != nil {
+				return false, err
+			}
+			if len(deployments.Items) == 0 {
+				ginkgo.GinkgoT().Log("no httpbin deployment created")
+				return false, nil
+			}
+			for _, deployment := range deployments.Items {
+				for _, cond := range deployment.Status.Conditions {
+					ginkgo.GinkgoT().Logf("deployment %v: %v", deployment.Name, cond.String())
+				}
+			}
 			return false, nil
 		}
 		for _, pod := range items {

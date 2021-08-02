@@ -35,4 +35,7 @@ type Event struct {
 	// in such a case it stands for the final state
 	// of the object.
 	Tombstone interface{}
+
+	// Revision is the revision that the event happened
+	Revision int64
 }

@@ -210,10 +210,9 @@ func (e *etcdV3) pushEvent(ev *types.Event) {
 	e.metaMu.RLock()
 	m, ok := e.metaCache[name]
 	e.metaMu.RUnlock()
-	rev := e.revisioner.Revision()
-	m.modRevision = rev
+	m.modRevision = ev.Revision
 	if !ok {
-		m.createRevision = rev
+		m.createRevision = ev.Revision
 	}
 	value, err := json.Marshal(obj)
 	if err != nil {
@@ -247,35 +246,56 @@ func (e *etcdV3) pushEvent(ev *types.Event) {
 		switch obj.(type) {
 		case *apisix.Route:
 			for id := range ws.route {
-				resps = append(resps, &etcdserverpb.WatchResponse{
+				resp := &etcdserverpb.WatchResponse{
 					Header: &etcdserverpb.ResponseHeader{
-						Revision: e.revisioner.Revision(),
+						Revision: ev.Revision,
 					},
 					WatchId: id,
 					Events: []*mvccpb.Event{
 						event,
 					},
-				})
+				}
+				resps = append(resps, resp)
+				ws.etcd.logger.Debugw("push to client",
+					zap.Any("watch_id", resp.WatchId),
+					zap.Any("revision", resp.Header.Revision),
+					zap.Any("resource", "route"),
+					zap.Any("events", event),
+				)
 			}
 		case *apisix.Upstream:
 			for id := range ws.upstream {
-				resps = append(resps, &etcdserverpb.WatchResponse{
+				resp := &etcdserverpb.WatchResponse{
 					Header: &etcdserverpb.ResponseHeader{
-						Revision: e.revisioner.Revision(),
+						Revision: ev.Revision,
 					},
 					WatchId: id,
 					Events: []*mvccpb.Event{
 						event,
 					},
-				})
+				}
+				resps = append(resps, resp)
+				ws.etcd.logger.Debugw("push to client",
+					zap.Any("watch_id", resp.WatchId),
+					zap.Any("revision", resp.Header.Revision),
+					zap.Any("resource", "upstream"),
+					zap.Any("events", event),
+				)
 			}
 		}
 		ws.mu.RUnlock()
+		// Must be non-blocking to release e.watcherMu, because once ws.ctx is done,
+		// e.watcherMu will be acquired to execute watchers cleanup
 		go func(ws *watchStream) {
 			for _, resp := range resps {
 				select {
 				case ws.eventCh <- resp:
 				case <-ws.ctx.Done():
+					ws.etcd.logger.Debugw("context done, etcd push aborted",
+						zap.Any("revision", resp.Header.Revision),
+						zap.Any("resp", resp),
+						zap.Any("watch_id", resp.WatchId),
+					)
 					// Must watch on the ctx.Done() or this goroutine might be leaky.
 					return
 				}
