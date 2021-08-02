@@ -60,8 +60,9 @@ type grpcProvisioner struct {
 	// this map enrolls all clusters that require further EDS requests.
 	edsRequiredClusters set.StringSet
 
-	sendCh chan *discoveryv3.DiscoveryRequest
-	recvCh chan *discoveryv3.DiscoveryResponse
+	sendCh  chan *discoveryv3.DiscoveryRequest
+	recvCh  chan *discoveryv3.DiscoveryResponse
+	resetCh chan error
 }
 
 // NewXDSProvisioner creates a provisioner which fetches config over gRPC.
@@ -97,6 +98,7 @@ func NewXDSProvisioner(cfg *config.Config) (provisioner.Provisioner, error) {
 		v3Adaptor:           adapter,
 		sendCh:              make(chan *discoveryv3.DiscoveryRequest),
 		recvCh:              make(chan *discoveryv3.DiscoveryResponse),
+		resetCh:             make(chan error),
 		upstreams:           make(map[string]*apisix.Upstream),
 		edsRequiredClusters: make(map[string]struct{}),
 	}, nil
@@ -107,26 +109,46 @@ func (p *grpcProvisioner) Channel() <-chan []types.Event {
 }
 
 func (p *grpcProvisioner) Run(stop chan struct{}) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	defer close(p.evChan)
-
-	conn, err := grpcp.DialContext(ctx, p.configSource,
-		grpcp.WithInsecure(),
-		grpcp.WithBlock(),
-	)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := conn.Close(); err != nil {
-			p.logger.Errorw("failed to close gRPC connection to XDS config source",
-				zap.Error(err),
-				zap.String("config_source", p.configSource),
-			)
+	for {
+		ctx, cancel := context.WithCancel(context.Background())
+		conn, err := grpcp.DialContext(ctx, p.configSource,
+			grpcp.WithInsecure(),
+			grpcp.WithBlock(),
+		)
+		if err != nil {
+			cancel()
+			return err
 		}
-	}()
+		cleanup := func() {
+			cancel()
+			if err := conn.Close(); err != nil {
+				p.logger.Errorw("failed to close gRPC connection to XDS config source",
+					zap.Error(err),
+					zap.String("config_source", p.configSource),
+				)
+			}
+		}
+		if err := p.run(ctx, conn); err != nil {
+			cleanup()
+			return err
+		}
 
+		select {
+		case <-stop:
+			cleanup()
+			return nil
+		case err = <-p.resetCh:
+			cleanup()
+			log.Errorw("grpc client reset",
+				zap.Error(err),
+			)
+			continue
+		}
+	}
+}
+
+func (p *grpcProvisioner) run(ctx context.Context, conn *grpcp.ClientConn) error {
 	client, err := discoveryv3.NewAggregatedDiscoveryServiceClient(conn).StreamAggregatedResources(ctx)
 	if err != nil {
 		return err
@@ -135,9 +157,7 @@ func (p *grpcProvisioner) Run(stop chan struct{}) error {
 	go p.sendLoop(ctx, client)
 	go p.recvLoop(ctx, client)
 	go p.translateLoop(ctx)
-
-	p.firstSend()
-	<-stop
+	go p.firstSend()
 	return nil
 }
 
@@ -193,6 +213,10 @@ func (p *grpcProvisioner) recvLoop(ctx context.Context, client discoveryv3.Aggre
 				p.logger.Errorw("failed to receive discovery response",
 					zap.Error(err),
 				)
+				if strings.Contains(err.Error(), "transport is closing") {
+					p.resetCh <- err
+					return
+				}
 				continue
 			}
 		}
