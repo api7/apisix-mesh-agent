@@ -22,6 +22,7 @@ type options struct {
 	outputFile  string
 	logLevel    string
 	context     string
+	skipFrames  int
 }
 
 // WithLogLevel sets the log level.
@@ -58,6 +59,16 @@ func WithWriteSyncer(ws zapcore.WriteSyncer) Option {
 	return &funcOption{
 		do: func(o *options) {
 			o.writeSyncer = ws
+		},
+	}
+}
+
+// WithSkipFrames sets the number frames that will be skipped when printing
+// the file and line information.
+func WithSkipFrames(sf int) Option {
+	return &funcOption{
+		do: func(o *options) {
+			o.skipFrames = sf
 		},
 	}
 }
