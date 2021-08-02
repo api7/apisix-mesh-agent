@@ -16,6 +16,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: httpbin
+  labels:
+    app: httpbin
 spec:
   replicas: {{ .HttpBinReplicas }}
   selector:
@@ -87,7 +89,7 @@ func (f *Framework) waitUntilAllHttpBinPodsReady() error {
 			}
 			for _, deployment := range deployments.Items {
 				for _, cond := range deployment.Status.Conditions {
-					ginkgo.GinkgoT().Log("deployment %v: %v", deployment.Name, cond.String())
+					ginkgo.GinkgoT().Logf("deployment %v: %v", deployment.Name, cond.String())
 				}
 			}
 			return false, nil
